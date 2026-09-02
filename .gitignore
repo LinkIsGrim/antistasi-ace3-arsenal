@@ -1,6 +1,7 @@
 *.pbo
 releases/*
 *.biprivatekey
+.hemttprivatekey
 keys/*
 /releases
 /keys

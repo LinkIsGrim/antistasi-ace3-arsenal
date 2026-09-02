@@ -17,10 +17,26 @@ if (isNil "JN_fnc_arsenal") exitWith {
 JN_fnc_arsenal_init = compileFinal preprocessFileLineNumbers QPATHTOF(overrides\fnc_arsenal_init.sqf);
 JN_fnc_arsenal_handleAction = compileFinal preprocessFileLineNumbers QPATHTOF(overrides\fnc_arsenal_handleAction.sqf);
 
+// Server-authoritative accept/refuse for a client's proposed pool deltas -
+// see fnc_reconcile.sqf's header for why this can't be decided client-side.
+[QGVAR(reconcileRequest), {_this call FUNC(serverReconcile)}] call CBA_fnc_addEventHandler;
+
 if (hasInterface) then {
-    ["ace_arsenal_cargoChanged", {_this call FUNC(reconcileCargoChanged)}] call CBA_fnc_addEventHandler;
+    [QGVAR(reconcileResult), {_this call FUNC(reconcileResult)}] call CBA_fnc_addEventHandler;
+
+    // Debounced to let the cargo container actually settle before diffing -
+    // matches the pattern antistasi-ace-arsenal uses for the same event.
+    ["ace_arsenal_cargoChanged", {
+        [{call FUNC(reconcile)}, []] call CBA_fnc_execNextFrame;
+    }] call CBA_fnc_addEventHandler;
 
     ["ace_arsenal_displayClosed", {
+        // Catches anything a debounced cargoChanged reconcile hasn't settled yet
+        // (e.g. a change right before close) before the snapshot state is torn down.
+        call FUNC(reconcile);
+
+        ["RestoreTFAR"] call jn_fnc_arsenal;
+
         if (missionNamespace getVariable [QGVAR(loadoutMode), false]) then {
             private _own = GVAR(loadoutBackup);
             if (!isNil "_own") then {player setUnitLoadout _own};
@@ -29,6 +45,16 @@ if (hasInterface) then {
             currentRebelLoadout = nil;
         };
 
-        GVAR(activeBox) = objNull;
+        // Deliberately not clearing GVAR(snapUnit)/snapPool/snapLoadout here - the
+        // reconcile call just above is a server round-trip, and fnc_reconcileResult.sqf
+        // needs them intact when the reply lands after this handler returns. They get
+        // reset fresh at the start of the next fnc_openPlayer.sqf/fnc_openLoadout.sqf
+        // anyway, so there's nothing to gain from nulling them early - only the risk of
+        // dropping the in-flight reply (a "revert" verdict silently not applying).
+        //
+        // Known gap: closing and immediately reopening the arsenal within one network
+        // round-trip could let the reopen's snapshot get clobbered by the previous
+        // session's still-in-flight reply. Narrow window, not solved yet - would need
+        // a request-id/session-token scheme to close properly.
     }] call CBA_fnc_addEventHandler;
 };

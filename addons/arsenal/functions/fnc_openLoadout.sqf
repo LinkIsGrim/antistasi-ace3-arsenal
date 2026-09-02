@@ -31,6 +31,8 @@ if (isNil "currentRebelLoadout") exitWith {
     ["No rebel role selected."] call BIS_fnc_error;
 };
 
+["SaveTFAR"] call jn_fnc_arsenal;
+
 GVAR(loadoutBackup) = getUnitLoadout player;
 
 if (backpack player != "") then {removeBackpack player};
@@ -47,7 +49,9 @@ private _items = [] call FUNC(poolFlat);
 [_box, true, false] call ace_arsenal_fnc_removeVirtualItems;
 [_box, _items, false] call ace_arsenal_fnc_addVirtualItems;
 
-GVAR(activeBox) = _box;
+GVAR(snapUnit) = player;
+GVAR(snapPool) = [player, true] call jn_fnc_arsenal_cargoToArray;
+GVAR(snapLoadout) = getUnitLoadout player;
 GVAR(loadoutMode) = true;
 
 [_box, player] call ace_arsenal_fnc_openBox;

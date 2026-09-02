@@ -1,7 +1,11 @@
 PREP(isTEH);
 PREP(poolFlat);
 PREP(openPlayer);
-PREP(openContainer);
 PREP(openLoadout);
-PREP(reconcileCargoChanged);
-PREP(serverAdjustPool);
+PREP(isForbidden);
+PREP(poolFind);
+PREP(poolLimit);
+PREP(stripMagazines);
+PREP(reconcile);
+PREP(serverReconcile);
+PREP(reconcileResult);
