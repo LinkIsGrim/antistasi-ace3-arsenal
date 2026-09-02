@@ -11,11 +11,10 @@
  * arsenalClosed scripted-event dispatch (which only fires for
  * BIS_fnc_arsenal) is relevant to this path.
  *
- * "Container fill" is deliberately not added yet - ace_arsenal_fnc_openBox
- * can't do it (the box argument is only ever a virtual-item source, the unit
- * argument is always who gets outfitted; there's no mode where the box is
- * the transfer target), so it needs its own dialog. See design-outline.md
- * section 5.
+ * "Open Container" goes through FUNC(openContainer) instead, a bespoke
+ * transfer dialog rather than ace_arsenal_fnc_openBox - confirmed twice over
+ * (design-outline.md section 5) that ACE arsenal's per-person data model
+ * can't represent a container's stackable cargo.
  *
  * Arguments:
  * 0: Arsenal box object <OBJECT>
@@ -62,6 +61,16 @@ if (hasInterface) then {
             "\A3\ui_f\data\GUI\Rsc\RscDisplayArsenal\spaceArsenal_ca.paa",
             localize "STR_A3_Arsenal"],
         {[] call JN_fnc_arsenal_handleAction},
+        [],
+        6, true, false, "",
+        "alive _target && {_target distance _this < 5} && {vehicle player == player}"
+    ];
+
+    _object addAction [
+        format ["<img image='%1' size='1.6' shadow=2/><t size='1'> %2</t>",
+            "\A3\ui_f\data\GUI\Rsc\RscDisplayArsenal\cargoMag_ca.paa",
+            "Open Container"],
+        {[cursorObject] call FUNC(openContainer)},
         [],
         6, true, false, "",
         "alive _target && {_target distance _this < 5} && {vehicle player == player}"

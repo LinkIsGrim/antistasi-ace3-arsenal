@@ -47,3 +47,8 @@
 
 #define JNA_TAB_COUNT_BASE 27 // CE / Ultimate
 #define JNA_TAB_COUNT_TEH  28 // TEH (adds CARGOBULLET)
+
+// Needed by both config.cpp (RSC classes) and any .sqf that touches the
+// transfer dialog's controls - two separate preprocessing contexts, both
+// need to see these.
+#include "dialogues\defines.hpp"

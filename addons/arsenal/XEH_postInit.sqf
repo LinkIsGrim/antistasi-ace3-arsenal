@@ -21,8 +21,15 @@ JN_fnc_arsenal_handleAction = compileFinal preprocessFileLineNumbers QPATHTOF(ov
 // see fnc_reconcile.sqf's header for why this can't be decided client-side.
 [QGVAR(reconcileRequest), {_this call FUNC(serverReconcile)}] call CBA_fnc_addEventHandler;
 
+// Same reasoning applies to the transfer dialog - it needs an authoritative
+// pool snapshot to display, and the transfer itself needs server checks.
+[QGVAR(poolSnapshotRequest), {_this call FUNC(serverPoolSnapshot)}] call CBA_fnc_addEventHandler;
+[QGVAR(transferRequest), {_this call FUNC(serverTransfer)}] call CBA_fnc_addEventHandler;
+
 if (hasInterface) then {
     [QGVAR(reconcileResult), {_this call FUNC(reconcileResult)}] call CBA_fnc_addEventHandler;
+    [QGVAR(poolSnapshotResult), {_this call FUNC(poolSnapshotResult)}] call CBA_fnc_addEventHandler;
+    [QGVAR(transferResult), {_this call FUNC(transferResult)}] call CBA_fnc_addEventHandler;
 
     // Debounced to let the cargo container actually settle before diffing -
     // matches the pattern antistasi-ace-arsenal uses for the same event.

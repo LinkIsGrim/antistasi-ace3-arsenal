@@ -18,3 +18,12 @@ class CfgPatches {
 };
 
 #include "CfgEventHandlers.hpp"
+
+// dialogues\defines.hpp already pulled in via script_component.hpp
+
+class RscListNBox;
+class RscText;
+class RscEdit;
+class RscButton;
+
+#include "dialogues\transferDialog.hpp"
