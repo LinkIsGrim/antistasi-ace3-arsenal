@@ -1,5 +1,6 @@
 PREP(isTEH);
 PREP(poolFlat);
+PREP(syncPool);
 PREP(openPlayer);
 PREP(openLoadout);
 PREP(openContainer);

@@ -27,13 +27,7 @@ if (!alive player) exitWith {};
 // itself) - reused as-is rather than reimplemented, identical across CE/Ultimate/TEH.
 ["SaveTFAR"] call jn_fnc_arsenal;
 
-private _items = [] call FUNC(poolFlat);
-
-// TODO(perf): this strips and re-adds every virtual item on every open. Fine for
-// correctness, but see fnc_poolFlat.sqf's note - skip this when the pool hasn't
-// changed since the box's last open instead of paying the full round-trip every time.
-[_box, true, false] call ace_arsenal_fnc_removeVirtualItems;
-[_box, _items, false] call ace_arsenal_fnc_addVirtualItems;
+[_box] call FUNC(syncPool);
 
 GVAR(snapUnit) = player;
 GVAR(snapPool) = [player, true] call jn_fnc_arsenal_cargoToArray;

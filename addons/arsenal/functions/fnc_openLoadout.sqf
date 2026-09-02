@@ -45,9 +45,7 @@ if (!isNil "_loadout") then {
     player setUnitLoadout +_loadout;
 };
 
-private _items = [] call FUNC(poolFlat);
-[_box, true, false] call ace_arsenal_fnc_removeVirtualItems;
-[_box, _items, false] call ace_arsenal_fnc_addVirtualItems;
+[_box] call FUNC(syncPool);
 
 GVAR(snapUnit) = player;
 GVAR(snapPool) = [player, true] call jn_fnc_arsenal_cargoToArray;
