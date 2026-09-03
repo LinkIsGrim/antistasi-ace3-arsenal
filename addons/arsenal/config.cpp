@@ -23,12 +23,21 @@ class CfgPatches {
 // adding a separate duplicate entry - its statement is empty (returns nil,
 // ACE_Arsenal_Sorts.hpp: statement = QUOTE({})), a sentinel meaning "sort
 // the control's own rendered row text", which breaks once fnc_decorate.sqf
-// prefixes that text with a stock label. Re-opening the class (no explicit
-// : ACE_alphabetically parent needed - same name in the same scope merges
-// into the existing class rather than redefining it) keeps its scope/
-// displayName/tabs, only the statement changes.
+// prefixes that text with a stock label.
+//
+// MUST restate ": sortBase" explicitly even though the class already exists
+// with that exact parent - confirmed from the RPT ("Updating base class
+// 'sortBase'->''") that omitting it doesn't merge into the existing class
+// the way same-PBO config re-opens normally do; across PBOs it severed the
+// inheritance link entirely instead. ACE_alphabetically doesn't declare its
+// own "condition" (relies on inheriting sortBase's condition = QUOTE(true)),
+// so losing that inheritance left it an uncompiled string, which threw a
+// type error in fnc_fillSort.sqf and emptied the entire sort dropdown for
+// every tab - not just this one entry - and cascaded into the arsenal's own
+// camera cleanup (fnc_onArsenalClose.sqf) failing too.
 class ace_arsenal_sorts {
-    class ACE_alphabetically {
+    class sortBase; // external forward declaration - lives in ace_arsenal's own config.bin
+    class ACE_alphabetically: sortBase {
         statement = QUOTE(call FUNC(sortStatementAlphabetical));
     };
 };
