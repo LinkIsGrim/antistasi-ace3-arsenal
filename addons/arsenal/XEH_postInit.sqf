@@ -36,6 +36,19 @@ if (hasInterface) then {
     [QGVAR(dataListResult), {_this call FUNC(dataListResult)}] call CBA_fnc_addEventHandler;
     [QGVAR(transferResult), {_this call FUNC(transferResult)}] call CBA_fnc_addEventHandler;
 
+    // Counts/colors/tooltips - ACE's panels have no native concept of any of
+    // this, decorated on after the fact. See fnc_decorate.sqf's header.
+    ["ace_arsenal_leftPanelFilled", {(_this select 0) call FUNC(decorate)}] call CBA_fnc_addEventHandler;
+    ["ace_arsenal_rightPanelFilled", {(_this select 0) call FUNC(decorate)}] call CBA_fnc_addEventHandler;
+
+    // Sort by pool stock rather than anything ACE natively tracks - applies
+    // to every left/right tab per the framework doc's stat/sort tab numbering.
+    [
+        [[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14], [0,1,2,3,4,5,6,7]],
+        QGVAR(sortStock), "Antistasi Stock",
+        {_this call FUNC(sortStatementStock)}
+    ] call ace_arsenal_fnc_addSort;
+
     // Debounced to let the cargo container actually settle before diffing -
     // matches the pattern antistasi-ace-arsenal uses for the same event.
     ["ace_arsenal_cargoChanged", {

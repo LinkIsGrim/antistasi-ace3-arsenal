@@ -52,3 +52,16 @@
 // transfer dialog's controls - two separate preprocessing contexts, both
 // need to see these.
 #include "dialogues\defines.hpp"
+
+// ACE arsenal's own panel control IDCs (ace3/addons/arsenal/defines.hpp) -
+// hardcoded rather than included from ACE directly, since we don't have a
+// stub for that specific file. Stable, public-facing UI structure, but a
+// soft dependency on ACE not restructuring its panels.
+#define ARSENAL_IDC_LEFTLIST 13
+#define ARSENAL_IDC_RIGHTLIST 14
+#define ARSENAL_IDC_RIGHTLISTNB 15
+
+#define ARSENAL_COLOR_FORBIDDEN [0.69, 0, 0.13, 1]
+#define ARSENAL_COLOR_LIMITED [1, 1, 0, 1]
+#define ARSENAL_COLOR_UNLIMITED [0.6, 0.85, 0.6, 1]
+#define ARSENAL_COLOR_DEFAULT [1, 1, 1, 1]

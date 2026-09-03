@@ -1,7 +1,12 @@
 #include "script_component.hpp"
 /*
  * Author: LinkIsGrim
- * Server-side: locates a classname's entry in jna_dataList.
+ * Locates a classname's entry in jna_dataList. Safe to call client-side for
+ * display purposes (fnc_decorate.sqf) now that jna_dataList is kept synced
+ * for the duration of an arsenal session (fnc_requestDataListSync.sqf) -
+ * still only the server's own copy is authoritative for actual accept/refuse
+ * decisions (fnc_serverReconcile.sqf/fnc_serverTransfer.sqf already call this
+ * from server context for that).
  *
  * Arguments:
  * 0: Classname <STRING>
@@ -12,8 +17,6 @@
  * Example:
  * ["arifle_MX_F"] call FUNC(poolFind)
  */
-
-if (!isServer) exitWith {[-1, 0, ""]};
 
 params [["_class", "", [""]]];
 

@@ -17,3 +17,6 @@ PREP(transferResult);
 PREP(serverSyncDataList);
 PREP(dataListResult);
 PREP(requestDataListSync);
+PREP(describeItem);
+PREP(decorate);
+PREP(sortStatementStock);
