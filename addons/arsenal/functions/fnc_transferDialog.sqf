@@ -31,7 +31,9 @@ private _fnc_nameOf = {
 switch (_mode) do {
 
     case "onLoad": {
-        _params params ["_display"];
+        // _params is already the display here (config wraps the dialog's raw
+        // onLoad _this as ['onLoad', _this], matching ACE's own RscAttributes.hpp
+        // convention) - no further unwrapping needed, and unused below anyway.
         ["fill"] call FUNC(transferDialog);
         [{["fill"] call FUNC(transferDialog)}] call FUNC(requestDataListSync);
     };
