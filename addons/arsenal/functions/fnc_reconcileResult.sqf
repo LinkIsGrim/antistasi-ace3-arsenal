@@ -19,8 +19,19 @@ if (isNull _unit) exitWith {GVAR(busy) = false;};
 
 switch (_mode) do {
     case "ok": {
-        GVAR(snapPool) = [_unit, true] call jn_fnc_arsenal_cargoToArray;
-        GVAR(snapLoadout) = getUnitLoadout _unit;
+        // Rebase to what was actually PROPOSED (fnc_reconcile.sqf, set right
+        // before sending), not a fresh live read of the unit. This request
+        // confirmed exactly that state got charged/returned - a live read
+        // here would be indistinguishable from "whatever the player has done
+        // since," so any change made during the round trip (e.g. swapping
+        // back to the original item before this reply even landed, dropped
+        // by the busy-gate) would get silently folded into the new baseline
+        // as if it had already been reconciled, instead of showing up as a
+        // diff for the retry below to catch. Confirmed exploitable (repeated
+        // fast swapping produced free stock) with the live-read version of
+        // this fix.
+        GVAR(snapPool) = missionNamespace getVariable [QGVAR(snapPoolProposed), GVAR(snapPool)];
+        GVAR(snapLoadout) = missionNamespace getVariable [QGVAR(snapLoadoutProposed), GVAR(snapLoadout)];
         GVAR(stripDepth) = 0;
         GVAR(busy) = false;
 
@@ -32,15 +43,11 @@ switch (_mode) do {
             if (!isNull _display) then {_display call FUNC(decorate)};
         }] call FUNC(requestDataListSync);
 
-        // A change that happened while this request was in flight (e.g.
-        // swapping back to the original item before this reply even landed)
-        // got dropped by fnc_reconcile.sqf's busy-gate rather than diffed -
-        // see that file's header. Catch it now against the fresh snapshot
-        // just above, or it's gone for good (an exploitable free take/phantom
-        // return, confirmed in testing).
-        if (missionNamespace getVariable [QGVAR(reconcilePending), false]) then {
-            call FUNC(reconcile);
-        };
+        // Always re-diff against the baseline just set, not just when a call
+        // was known to be dropped - catches anything that happened during
+        // the round trip, whether or not fnc_reconcile.sqf's busy-gate ever
+        // actually fired for it. Cheap no-op if nothing changed.
+        call FUNC(reconcile);
     };
 
     case "revert": {
@@ -53,10 +60,9 @@ switch (_mode) do {
         GVAR(stripDepth) = 0;
         GVAR(busy) = false;
 
-        // Same reasoning as the "ok" case above.
-        if (missionNamespace getVariable [QGVAR(reconcilePending), false]) then {
-            call FUNC(reconcile);
-        };
+        // Same reasoning as the "ok" case above - catch anything that
+        // happened during the round trip.
+        call FUNC(reconcile);
     };
 
     case "strip": {
