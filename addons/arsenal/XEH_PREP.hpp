@@ -20,5 +20,6 @@ PREP(dataListResult);
 PREP(requestDataListSync);
 PREP(describeItem);
 PREP(decorate);
+PREP(cleanName);
 PREP(sortStatementStock);
 PREP(sortStatementAlphabetical);

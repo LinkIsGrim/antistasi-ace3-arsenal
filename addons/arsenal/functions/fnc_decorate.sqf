@@ -30,14 +30,6 @@ params [["_display", displayNull, [displayNull]]];
 if (isNull _display) exitWith {};
 if (isNull (missionNamespace getVariable [QGVAR(snapUnit), objNull])) exitWith {};
 
-private _fnc_stripPrefix = {
-    params ["_name"];
-    if ((_name select [0, 1]) != "[") exitWith {_name};
-    private _cut = _name find "] ";
-    if (_cut < 0) exitWith {_name};
-    _name select [_cut + 2]
-};
-
 private _fnc_decorateLb = {
     params ["_ctrl"];
     if (isNull _ctrl) exitWith {};
@@ -48,7 +40,7 @@ private _fnc_decorateLb = {
 
         ([_class] call FUNC(describeItem)) params ["_label", "_color", "_tooltip"];
 
-        private _name = [_ctrl lbText _i] call _fnc_stripPrefix;
+        private _name = [_ctrl lbText _i] call FUNC(cleanName);
         _ctrl lbSetText [_i, format ["[%1] %2", _label, _name]];
         _ctrl lbSetColor [_i, _color];
         _ctrl lbSetTooltip [_i, _tooltip];
@@ -68,7 +60,7 @@ if (!isNull _ctrlNb) then {
 
         ([_class] call FUNC(describeItem)) params ["_label", "_color", "_tooltip"];
 
-        private _name = [_ctrlNb lnbText [_i, 1]] call _fnc_stripPrefix;
+        private _name = [_ctrlNb lnbText [_i, 1]] call FUNC(cleanName);
         _ctrlNb lnbSetText [[_i, 1], format ["[%1] %2", _label, _name]];
         _ctrlNb lnbSetColor [[_i, 1], _color];
         _ctrlNb lnbSetTooltip [[_i, 1], _tooltip];

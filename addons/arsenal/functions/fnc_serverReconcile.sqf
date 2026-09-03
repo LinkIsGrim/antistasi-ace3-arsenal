@@ -88,8 +88,10 @@ if (_stripMags isNotEqualTo []) exitWith {
     [_tab, _class, _amount] call jn_fnc_arsenal_addItem;
 } forEach _returned;
 
-// Piggyback the fresh jna_dataList on the reply rather than a separate
-// round-trip - the client's copy is otherwise never refreshed after a
-// successful take/return, so decoration (item counts) would go stale until
-// the next full session open.
-[QGVAR(reconcileResult), ["ok", +jna_dataList], _unit] call CBA_fnc_targetEvent;
+// Deliberately NOT piggybacking jna_dataList on this reply (tried once,
+// reverted) - this event's reply is what clears GVAR(busy) client-side, and
+// riding a potentially large nested array on the same critical path risked
+// silently wedging reconciliation permanently if that payload ever failed
+// to arrive cleanly. The client asks for a fresh jna_dataList separately
+// via fnc_requestDataListSync.sqf's own dedicated, already-proven channel.
+[QGVAR(reconcileResult), ["ok"], _unit] call CBA_fnc_targetEvent;

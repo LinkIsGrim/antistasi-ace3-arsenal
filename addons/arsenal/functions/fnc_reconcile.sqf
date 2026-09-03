@@ -96,3 +96,19 @@ if (_taken isEqualTo [] && {_returned isEqualTo []}) exitWith {};
 
 GVAR(busy) = true;
 [QGVAR(reconcileRequest), [_unit, _taken, _returned]] call CBA_fnc_serverEvent;
+
+// Watchdog: if the reply is ever lost (network hiccup, whatever), GVAR(busy)
+// would otherwise stay true forever and silently disable reconciliation for
+// the rest of the session - nothing further would ever get checked or
+// charged against the pool. Token-gated so a reply that arrives in time
+// (clearing busy and bumping the token) doesn't get clobbered by a stale
+// watchdog from an earlier request.
+private _token = (missionNamespace getVariable [QGVAR(reconcileToken), 0]) + 1;
+GVAR(reconcileToken) = _token;
+[{
+    params ["_token"];
+    if (GVAR(busy) && {missionNamespace getVariable [QGVAR(reconcileToken), -1] == _token}) then {
+        diag_log text "[skuaa3aa_arsenal] Reconcile reply never arrived; clearing busy state.";
+        GVAR(busy) = false;
+    };
+}, [_token], 5] call CBA_fnc_waitAndExecute;

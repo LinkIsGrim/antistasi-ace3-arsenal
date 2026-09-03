@@ -3,13 +3,17 @@
  * Author: LinkIsGrim
  * Statement for the "Sort by stock" sort (registered via ace_arsenal_fnc_addSort
  * in XEH_postInit.sqf) - sorts items by pool stock rather than anything ACE
- * natively tracks. Returns a negated value so the default (ascending) sort
- * shows the most available first, matching what a player expects from
- * "sort by stock" - reversed from the first pass, which sorted least-available
- * first by default.
+ * natively tracks.
  *
- * Unlimited stock (-1) sorts as the most negative, so it reads as "most
- * available" ahead of any finite count under the same ascending sort.
+ * Uses a plain positive value (unlimited stock as a large sentinel), not a
+ * negated one - ACE's sort is fundamentally TEXT-based (confirmed from
+ * fnc_sortPanel.sqf: lbSortBy ["TEXT", ...]), and negative numbers don't
+ * compare correctly as fixed-width text ("-0015.00" doesn't sort before
+ * "-0010.00" the way -15 < -10 numerically would suggest - the first pass
+ * used negation for this and produced exactly that bug, [15] landing after
+ * [10] under a descending sort). Higher stock = higher value here; the UI's
+ * own ascending/descending toggle (unrelated to what we return) decides
+ * whether that reads as "most available first" or "least available first".
  *
  * Arguments:
  * 0: Item config <CONFIG>
@@ -24,6 +28,6 @@
 params [["_itemCfg", configNull, [configNull]], ["_class", "", [""]]];
 
 private _stock = (_class call FUNC(poolFind)) select 1;
-if (_stock == -1) exitWith {-999999};
+if (_stock == -1) exitWith {999999999};
 
--_stock
+_stock

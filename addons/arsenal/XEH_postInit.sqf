@@ -74,6 +74,43 @@ if (hasInterface) then {
         {_this call FUNC(sortStatementStock)}
     ] call ace_arsenal_fnc_addSort;
 
+    // Both the native alphabetical sort (no real statement, sorts on raw row
+    // text) and our own custom sorts' tie-break (ACE concatenates the row's
+    // rendered text after the statement's value for every sort, confirmed
+    // from fnc_sortPanel.sqf) read the row's literal displayed text - which
+    // fnc_decorate.sqf prefixes with a stock label. So anything sort-related
+    // needs to see the clean name at the moment sorting actually happens:
+    // strip the prefix right before the native sort runs, re-decorate after.
+    private _origSortPanel = ace_arsenal_fnc_sortPanel;
+    ace_arsenal_fnc_sortPanel = {
+        params ["_control"];
+        private _display = ctrlParent _control;
+        private _ours = !isNull (missionNamespace getVariable [QGVAR(snapUnit), objNull]);
+
+        if (_ours) then {
+            {
+                private _ctrl = _display displayCtrl _x;
+                if (!isNull _ctrl) then {
+                    for "_i" from 0 to (lbSize _ctrl) - 1 do {
+                        _ctrl lbSetText [_i, [_ctrl lbText _i] call FUNC(cleanName)];
+                    };
+                };
+            } forEach [ARSENAL_IDC_LEFTLIST, ARSENAL_IDC_RIGHTLIST];
+
+            private _ctrlNb = _display displayCtrl ARSENAL_IDC_RIGHTLISTNB;
+            if (!isNull _ctrlNb) then {
+                private _rows = (lnbSize _ctrlNb) select 0;
+                for "_i" from 0 to _rows - 1 do {
+                    _ctrlNb lnbSetText [[_i, 1], [_ctrlNb lnbText [_i, 1]] call FUNC(cleanName)];
+                };
+            };
+        };
+
+        _this call _origSortPanel;
+
+        if (_ours) then {_display call FUNC(decorate)};
+    };
+
     // Deliberately not reordering "Sort by stock" to the front of the dropdown -
     // addSort always appends and there's no priority parameter, so doing that
     // would mean directly mutating GVAR(sortListLeftPanel)/RightPanel, ACE's own
