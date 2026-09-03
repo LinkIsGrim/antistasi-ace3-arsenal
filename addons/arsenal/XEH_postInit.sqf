@@ -87,6 +87,12 @@ if (hasInterface) then {
         private _display = ctrlParent _control;
         private _ours = !isNull (missionNamespace getVariable [QGVAR(snapUnit), objNull]);
 
+        // TEMP diagnostic - confirms whether this wrapper is actually being
+        // invoked at all (there may be a direct internal call path during the
+        // initial panel fill, separate from the onLBSelChanged event, that
+        // captured the original function before this reassignment ran).
+        diag_log text format ["[skuaa3aa_arsenal] sortPanel wrapper hit, ours=%1, ctrl=%2", _ours, ctrlIDC _control];
+
         if (_ours) then {
             {
                 private _ctrl = _display displayCtrl _x;

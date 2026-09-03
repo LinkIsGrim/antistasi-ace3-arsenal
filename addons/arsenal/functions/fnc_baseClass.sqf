@@ -16,11 +16,18 @@
  * (framework doc section 3.2) for the types those three don't cover -
  * uniforms, vests, backpacks, NVGs etc.
  *
+ * Also normalizes case via ace_common_fnc_getConfigName - Arma classnames
+ * are case-insensitive at the config/command level, but plain SQF string
+ * comparison (==, findIf, in) isn't. Different sources (jna_dataList's own
+ * stored casing, whatever case the engine reports for an equipped item,
+ * whatever case a config's ace_arsenal_uniqueBase entry happens to be
+ * written in) can disagree on casing for the exact same real item.
+ *
  * Arguments:
  * 0: Classname <STRING>
  *
  * Return Value:
- * Resolved classname <STRING>
+ * Resolved classname, canonically cased <STRING>
  *
  * Example:
  * ["arifle_MX_ARCO_F"] call FUNC(baseClass)
@@ -29,6 +36,8 @@
 params [["_class", "", [""]]];
 
 if (_class == "") exitWith {_class};
+
+_class = _class call ace_common_fnc_getConfigName;
 
 private _tab = _class call jn_fnc_arsenal_itemType;
 
@@ -51,6 +60,6 @@ private _uniqueBase = getText (configFile >> "CfgWeapons" >> _resolved >> "ace_a
 if (_uniqueBase == "") then {_uniqueBase = getText (configFile >> "CfgMagazines" >> _resolved >> "ace_arsenal_uniqueBase")};
 if (_uniqueBase == "") then {_uniqueBase = getText (configFile >> "CfgVehicles" >> _resolved >> "ace_arsenal_uniqueBase")};
 
-if (_uniqueBase != "") exitWith {_uniqueBase};
+if (_uniqueBase != "") exitWith {_uniqueBase call ace_common_fnc_getConfigName};
 
-_resolved
+_resolved call ace_common_fnc_getConfigName

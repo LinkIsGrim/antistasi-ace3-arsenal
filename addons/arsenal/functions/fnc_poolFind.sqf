@@ -29,7 +29,17 @@ if (_tab == JNA_TAB_CARGOMAG) then {_tab = JNA_TAB_CARGOMAGALL};
 
 if (_tab < 0 || {_tab >= count jna_dataList}) exitWith {[-1, 0, _class]};
 
-private _entry = (jna_dataList select _tab) findIf {(_x select 0) == _class};
+private _tabEntries = jna_dataList select _tab;
+private _entry = _tabEntries findIf {(_x select 0) == _class};
+
+// Fallback: the stored entry itself might not be base/case-normalized (e.g.
+// an initial-equipment-list or admin-added entry using a variant classname
+// directly, or just written in different case) - normalize each candidate
+// before comparing too, not just the search key.
+if (_entry < 0) then {
+    _entry = _tabEntries findIf {((_x select 0) call FUNC(baseClass)) == _class};
+};
+
 if (_entry < 0) exitWith {[-1, 0, _class]};
 
-[_tab, (jna_dataList select _tab select _entry select 1), _class]
+[_tab, (_tabEntries select _entry select 1), _class]
