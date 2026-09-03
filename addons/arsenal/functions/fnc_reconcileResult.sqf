@@ -14,6 +14,8 @@
 
 params [["_mode", "", [""]], ["_arg", "", [[], ""]]];
 
+diag_log text format ["[skuaa3aa_arsenal][DIAG] reconcileResult: mode=%1 arg=%2 (frame %3)", _mode, _arg, diag_frameNo];
+
 private _unit = missionNamespace getVariable [QGVAR(snapUnit), objNull];
 if (isNull _unit) exitWith {GVAR(busy) = false;};
 

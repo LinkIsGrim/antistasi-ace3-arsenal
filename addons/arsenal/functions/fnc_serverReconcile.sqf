@@ -24,9 +24,11 @@
 
 if (!isServer) exitWith {};
 
-params [["_unit", objNull, [objNull]], ["_taken", [], [[]]], ["_returned", [], [[]]]];
+params [["_unit", objNull, [objNull]], ["_taken", [], [[]]], ["_returned", [], [[]]], ["_reqId", -1, [0]]];
 
 if (isNull _unit) exitWith {};
+
+diag_log text format ["[skuaa3aa_arsenal][DIAG] serverReconcile: received req %1 taken=%2 returned=%3", _reqId, _taken, _returned];
 
 private _isMember = _unit call A3A_fnc_isMember;
 private _refusalMsg = "";
@@ -71,10 +73,12 @@ private _charge = [];
 } forEach _taken;
 
 if (_refusalMsg != "") exitWith {
+    diag_log text format ["[skuaa3aa_arsenal][DIAG] serverReconcile: req %1 -> revert (%2)", _reqId, _refusalMsg];
     [QGVAR(reconcileResult), ["revert", _refusalMsg], _unit] call CBA_fnc_targetEvent;
 };
 
 if (_stripMags isNotEqualTo []) exitWith {
+    diag_log text format ["[skuaa3aa_arsenal][DIAG] serverReconcile: req %1 -> strip %2", _reqId, _stripMags];
     [QGVAR(reconcileResult), ["strip", _stripMags], _unit] call CBA_fnc_targetEvent;
 };
 
@@ -87,6 +91,8 @@ if (_stripMags isNotEqualTo []) exitWith {
     _x params ["_tab", "_class", "_amount"];
     [_tab, _class, _amount] call jn_fnc_arsenal_addItem;
 } forEach _returned;
+
+diag_log text format ["[skuaa3aa_arsenal][DIAG] serverReconcile: req %1 -> ok, charged=%2 returned=%3", _reqId, _charge, _returned];
 
 // Deliberately NOT piggybacking jna_dataList on this reply (tried once,
 // reverted) - this event's reply is what clears GVAR(busy) client-side, and

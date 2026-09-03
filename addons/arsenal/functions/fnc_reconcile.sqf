@@ -34,7 +34,9 @@
 // against something once that request resolves. fnc_reconcileResult.sqf
 // always re-runs this function after applying a reply, so it isn't lost -
 // just deferred until the in-flight request clears.
-if (missionNamespace getVariable [QGVAR(busy), false]) exitWith {};
+if (missionNamespace getVariable [QGVAR(busy), false]) exitWith {
+    diag_log text format ["[skuaa3aa_arsenal][DIAG] reconcile: dropped, busy (frame %1)", diag_frameNo];
+};
 
 private _unit = missionNamespace getVariable [QGVAR(snapUnit), objNull];
 if (isNull _unit) exitWith {};
@@ -112,7 +114,11 @@ GVAR(busy) = true;
 GVAR(snapPoolProposed) = _new;
 GVAR(snapLoadoutProposed) = getUnitLoadout _unit;
 
-[QGVAR(reconcileRequest), [_unit, _taken, _returned]] call CBA_fnc_serverEvent;
+private _reqId = (missionNamespace getVariable [QGVAR(reqCounter), 0]) + 1;
+GVAR(reqCounter) = _reqId;
+diag_log text format ["[skuaa3aa_arsenal][DIAG] reconcile: sending req %1 (frame %2) taken=%3 returned=%4", _reqId, diag_frameNo, _taken, _returned];
+
+[QGVAR(reconcileRequest), [_unit, _taken, _returned, _reqId]] call CBA_fnc_serverEvent;
 
 // Watchdog: if the reply is ever lost (network hiccup, whatever), GVAR(busy)
 // would otherwise stay true forever and silently disable reconciliation for
