@@ -38,27 +38,30 @@ if (hasInterface) then {
 
     // Counts/colors/tooltips - ACE's panels have no native concept of any of
     // this, decorated on after the fact. See fnc_decorate.sqf's header.
-    ["ace_arsenal_leftPanelFilled", {(_this select 0) call FUNC(decorate)}] call CBA_fnc_addEventHandler;
-    ["ace_arsenal_rightPanelFilled", {(_this select 0) call FUNC(decorate)}] call CBA_fnc_addEventHandler;
+    //
+    // Also the broadest available signal for triggering a reconcile: neither
+    // left-panel equip swaps (weapon/uniform/vest/backpack/etc, confirmed
+    // from fnc_onSelChangedLeft.sqf) nor right-panel attachment/optic picks
+    // (fires ace_arsenal_weaponItemChanged instead, confirmed from
+    // fnc_onSelChangedRight.sqf) fire ace_arsenal_cargoChanged at all - only
+    // actual cargo-container add/remove does. But a left-panel weapon swap
+    // does trigger an internal right-panel refill as a side effect
+    // (fnc_onSelChangedLeft.sqf calls FUNC(fillRightPanel) directly), which
+    // reaches us here - broader coverage than chasing every specific event.
+    ["ace_arsenal_leftPanelFilled", {
+        (_this select 0) call FUNC(decorate);
+        [{call FUNC(reconcile)}, []] call CBA_fnc_execNextFrame;
+    }] call CBA_fnc_addEventHandler;
+    ["ace_arsenal_rightPanelFilled", {
+        (_this select 0) call FUNC(decorate);
+        [{call FUNC(reconcile)}, []] call CBA_fnc_execNextFrame;
+    }] call CBA_fnc_addEventHandler;
 
-    // ACE's native "Sort alphabetically" has no real statement (ACE_Arsenal_Sorts.hpp:
-    // statement = QUOTE({})) - it's a sentinel meaning "sort the control's own
-    // rendered row text", which breaks once fnc_decorate.sqf prefixes that text
-    // with a stock label. Not calling ace_arsenal_fnc_removeSort on it -
-    // confirmed from its own source (fnc_removeSort.sqf) that it hardcodes a
-    // refusal to delete anything with an "ace_alphabetically" id ("make
-    // default sort not deletable"), so it would always be a no-op anyway.
-    // (A first pass called it wrong regardless - unwrapped ID array instead
-    // of ace_arsenal_fnc_removeSort's actual [_idList] calling convention -
-    // which threw and silently aborted the rest of this script, including
-    // everything registered below. Confirmed from the RPT: "Error foreach:
-    // Type String, expected Array,HashMap", fnc_removeSort.sqf line 53.)
-    // Just adding our own alongside it, same display name.
-    [
-        [[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17], [0,1,2,3,4,5,6,7]],
-        QGVAR(sortAlphabetical), "Sort alphabetically",
-        {_this call FUNC(sortStatementAlphabetical)}
-    ] call ace_arsenal_fnc_addSort;
+    // Belt and braces for the specific attachment-change case, since it's a
+    // more direct signal than relying on the right-panel-refill side effect.
+    ["ace_arsenal_weaponItemChanged", {
+        [{call FUNC(reconcile)}, []] call CBA_fnc_execNextFrame;
+    }] call CBA_fnc_addEventHandler;
 
     // Sort by pool stock rather than anything ACE natively tracks - applies
     // to every left/right tab per the framework doc's stat/sort tab numbering
@@ -69,48 +72,26 @@ if (hasInterface) then {
         {_this call FUNC(sortStatementStock)}
     ] call ace_arsenal_fnc_addSort;
 
-    // Both the native alphabetical sort (no real statement, sorts on raw row
-    // text) and our own custom sorts' tie-break (ACE concatenates the row's
-    // rendered text after the statement's value for every sort, confirmed
-    // from fnc_sortPanel.sqf) read the row's literal displayed text - which
-    // fnc_decorate.sqf prefixes with a stock label. So anything sort-related
-    // needs to see the clean name at the moment sorting actually happens:
-    // strip the prefix right before the native sort runs, re-decorate after.
-    private _origSortPanel = ace_arsenal_fnc_sortPanel;
-    ace_arsenal_fnc_sortPanel = {
-        params ["_control"];
-        private _display = ctrlParent _control;
-        private _ours = !isNull (missionNamespace getVariable [QGVAR(snapUnit), objNull]);
-
-        // TEMP diagnostic - confirms whether this wrapper is actually being
-        // invoked at all (there may be a direct internal call path during the
-        // initial panel fill, separate from the onLBSelChanged event, that
-        // captured the original function before this reassignment ran).
-        diag_log text format ["[skuaa3aa_arsenal] sortPanel wrapper hit, ours=%1, ctrl=%2", _ours, ctrlIDC _control];
-
-        if (_ours) then {
-            {
-                private _ctrl = _display displayCtrl _x;
-                if (!isNull _ctrl) then {
-                    for "_i" from 0 to (lbSize _ctrl) - 1 do {
-                        _ctrl lbSetText [_i, [_ctrl lbText _i] call FUNC(cleanName)];
-                    };
-                };
-            } forEach [ARSENAL_IDC_LEFTLIST, ARSENAL_IDC_RIGHTLIST];
-
-            private _ctrlNb = _display displayCtrl ARSENAL_IDC_RIGHTLISTNB;
-            if (!isNull _ctrlNb) then {
-                private _rows = (lnbSize _ctrlNb) select 0;
-                for "_i" from 0 to _rows - 1 do {
-                    _ctrlNb lnbSetText [[_i, 1], [_ctrlNb lnbText [_i, 1]] call FUNC(cleanName)];
-                };
-            };
-        };
-
-        _this call _origSortPanel;
-
-        if (_ours) then {_display call FUNC(decorate)};
-    };
+    // ACE's native alphabetical sort is fixed via a config-level statement
+    // override instead (config.cpp: class ace_arsenal_sorts { class
+    // ACE_alphabetically {...}; };), not a wrapper here. A wrapper around
+    // ace_arsenal_fnc_sortPanel was tried first (strip the stock-label prefix
+    // before the native sort runs, since both the native alphabetical sort
+    // and every custom sort's tie-break read the row's literal rendered
+    // text) - confirmed via RPT diag_log across two separate test sessions
+    // that it was NEVER actually invoked, despite the config wiring being
+    // verified correct (sortLeftTab: RscCombo { onLBSelChanged =
+    // QUOTE(call FUNC(sortPanel)); }, inherited by sortLeftTabDirection/
+    // sortRightTab/sortRightTabDirection). Root cause not identified -
+    // reassigning a global normally intercepts config event handler calls
+    // to it just fine (confirmed by this whole addon's core mechanism,
+    // JN_fnc_arsenal_init/handleAction), so something about this specific
+    // control's invocation path doesn't. Not chasing it further - the config
+    // override sidesteps the question entirely for the case that mattered
+    // (alphabetical had no real statement, so the corrupted text was its
+    // *whole* sort key). "Sort by stock"'s own tie-break (only relevant
+    // when two items have the exact same stock count) is left uncorrected -
+    // minor, since the stock value itself still dominates the ordering.
 
     // Deliberately not reordering "Sort by stock" to the front of the dropdown -
     // addSort always appends and there's no priority parameter, so doing that

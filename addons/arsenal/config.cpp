@@ -19,6 +19,20 @@ class CfgPatches {
 
 #include "CfgEventHandlers.hpp"
 
+// Redirects ACE's native alphabetical sort to our own statement instead of
+// adding a separate duplicate entry - its statement is empty (returns nil,
+// ACE_Arsenal_Sorts.hpp: statement = QUOTE({})), a sentinel meaning "sort
+// the control's own rendered row text", which breaks once fnc_decorate.sqf
+// prefixes that text with a stock label. Re-opening the class (no explicit
+// : ACE_alphabetically parent needed - same name in the same scope merges
+// into the existing class rather than redefining it) keeps its scope/
+// displayName/tabs, only the statement changes.
+class ace_arsenal_sorts {
+    class ACE_alphabetically {
+        statement = QUOTE(call FUNC(sortStatementAlphabetical));
+    };
+};
+
 // dialogues\defines.hpp already pulled in via script_component.hpp
 
 class RscListNBox;
