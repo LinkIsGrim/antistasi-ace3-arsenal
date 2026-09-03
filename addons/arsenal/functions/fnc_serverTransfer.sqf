@@ -40,6 +40,8 @@ private _fnc_report = {
 
 if (isNull _unit || {isNull _container} || {_class == ""} || {_amount <= 0}) exitWith {};
 
+_class = _class call FUNC(baseClass);
+
 private _tab = _class call jn_fnc_arsenal_itemType;
 if (_tab == JNA_TAB_CARGOMAG) then {_tab = JNA_TAB_CARGOMAGALL};
 if (_tab < 0) exitWith {["Can't identify that item."] call _fnc_report};

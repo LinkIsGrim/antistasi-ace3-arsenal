@@ -21,6 +21,8 @@ params [["_class", "", [""]]];
 
 if (_class == "" || {isNil "A3U_forbiddenItems"}) exitWith {false};
 
+_class = _class call FUNC(baseClass);
+
 if !(_class in A3U_forbiddenItems) exitWith {false};
 
 getNumber (configFile >> "A3U" >> "forbiddenItems" >> _class >> "unlimited") == 0

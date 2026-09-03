@@ -6,7 +6,8 @@
  *
  * Arguments:
  * 0: "ok", "revert" or "strip" <STRING>
- * 1: Refusal message ("revert") or magazine classnames to strip ("strip") <STRING or ARRAY>
+ * 1: Fresh jna_dataList ("ok"), refusal message ("revert"), or magazine
+ *    classnames to strip ("strip") <ARRAY or STRING>
  *
  * Return Value:
  * None
@@ -19,10 +20,14 @@ if (isNull _unit) exitWith {GVAR(busy) = false;};
 
 switch (_mode) do {
     case "ok": {
+        jna_dataList = _arg;
         GVAR(snapPool) = [_unit, true] call jn_fnc_arsenal_cargoToArray;
         GVAR(snapLoadout) = getUnitLoadout _unit;
         GVAR(stripDepth) = 0;
         GVAR(busy) = false;
+
+        private _display = findDisplay ARSENAL_IDD;
+        if (!isNull _display) then {_display call FUNC(decorate)};
     };
 
     case "revert": {

@@ -53,6 +53,13 @@ private _fnc_tally = {
             _x params [["_class", "", [""]], ["_amount", 0, [0]]];
             if (_class == "" || {_amount == 0}) then {continue};
 
+            // Normalize camo/color variants to whatever the pool actually
+            // tracks (ace_arsenal_uniqueBase) - see fnc_baseClass.sqf's header.
+            // Without this, a picked uniform/vest/backpack/etc. reads back as
+            // a different exact classname than what's in the pool, poolFind
+            // can't find it, and the whole take gets refused.
+            _class = _class call FUNC(baseClass);
+
             private _key = format ["%1|%2", _tab, _class];
             _map set [_key, (_map getOrDefault [_key, 0]) + _amount];
         } forEach _x;

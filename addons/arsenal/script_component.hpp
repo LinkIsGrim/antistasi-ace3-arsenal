@@ -57,11 +57,17 @@
 // hardcoded rather than included from ACE directly, since we don't have a
 // stub for that specific file. Stable, public-facing UI structure, but a
 // soft dependency on ACE not restructuring its panels.
+#define ARSENAL_IDD 1127001
 #define ARSENAL_IDC_LEFTLIST 13
 #define ARSENAL_IDC_RIGHTLIST 14
 #define ARSENAL_IDC_RIGHTLISTNB 15
+#define ARSENAL_IDC_BTN_REMOVEALLSEL 39
+#define ARSENAL_IDC_BTN_REMOVEALL 40
 
-#define ARSENAL_COLOR_FORBIDDEN [0.69, 0, 0.13, 1]
-#define ARSENAL_COLOR_LIMITED [1, 1, 0, 1]
-#define ARSENAL_COLOR_UNLIMITED [0.6, 0.85, 0.6, 1]
+// Saturated/high-contrast on purpose - the first pass used pastel tones that
+// blended into ACE's row-selection highlight, making them unreadable exactly
+// when a player had an item selected. May still need live tuning.
+#define ARSENAL_COLOR_FORBIDDEN [1, 0.15, 0.15, 1]
+#define ARSENAL_COLOR_LIMITED [1, 0.65, 0, 1]
+#define ARSENAL_COLOR_UNLIMITED [0.25, 1, 0.35, 1]
 #define ARSENAL_COLOR_DEFAULT [1, 1, 1, 1]

@@ -6,6 +6,10 @@
  * limit) rather than anything ACE natively tracks - see fnc_poolFind.sqf's
  * header for why this is safe to call client-side.
  *
+ * Unlimited stock uses the infinity glyph, matching how JNA's own arsenal
+ * skin already shows it ("[   ∞  ]" in fn_arsenal.sqf/fn_arsenal_loadoutArsenal.sqf)
+ * rather than inventing our own convention.
+ *
  * Arguments:
  * 0: Classname <STRING>
  *
@@ -28,7 +32,7 @@ if (_class call FUNC(isForbidden)) exitWith {
 
 if (_tab < 0) exitWith {["?", ARSENAL_COLOR_DEFAULT, "Not tracked by the arsenal pool."]};
 
-if (_stock == -1) exitWith {["unlimited", ARSENAL_COLOR_UNLIMITED, "Unlimited stock."]};
+if (_stock == -1) exitWith {["∞", ARSENAL_COLOR_UNLIMITED, "Unlimited stock."]};
 
 private _limit = [_class, _tab] call FUNC(poolLimit);
 private _color = if (_stock <= _limit) then {ARSENAL_COLOR_LIMITED} else {ARSENAL_COLOR_DEFAULT};

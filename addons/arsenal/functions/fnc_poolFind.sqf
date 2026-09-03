@@ -22,6 +22,8 @@ params [["_class", "", [""]]];
 
 if (_class == "" || {isNil "jna_dataList"}) exitWith {[-1, 0, _class]};
 
+_class = _class call FUNC(baseClass);
+
 private _tab = _class call jn_fnc_arsenal_itemType;
 if (_tab == JNA_TAB_CARGOMAG) then {_tab = JNA_TAB_CARGOMAGALL};
 

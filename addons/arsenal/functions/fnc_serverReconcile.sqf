@@ -88,4 +88,8 @@ if (_stripMags isNotEqualTo []) exitWith {
     [_tab, _class, _amount] call jn_fnc_arsenal_addItem;
 } forEach _returned;
 
-[QGVAR(reconcileResult), ["ok"], _unit] call CBA_fnc_targetEvent;
+// Piggyback the fresh jna_dataList on the reply rather than a separate
+// round-trip - the client's copy is otherwise never refreshed after a
+// successful take/return, so decoration (item counts) would go stale until
+// the next full session open.
+[QGVAR(reconcileResult), ["ok", +jna_dataList], _unit] call CBA_fnc_targetEvent;

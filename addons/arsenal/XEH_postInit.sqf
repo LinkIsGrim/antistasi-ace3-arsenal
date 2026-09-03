@@ -41,18 +41,68 @@ if (hasInterface) then {
     ["ace_arsenal_leftPanelFilled", {(_this select 0) call FUNC(decorate)}] call CBA_fnc_addEventHandler;
     ["ace_arsenal_rightPanelFilled", {(_this select 0) call FUNC(decorate)}] call CBA_fnc_addEventHandler;
 
+    // ACE's native "Sort alphabetically" has no real statement (ACE_Arsenal_Sorts.hpp:
+    // statement = QUOTE({})) - it's a sentinel meaning "sort the control's own
+    // rendered row text", which breaks once fnc_decorate.sqf prefixes that text
+    // with a stock label. Remove every tab instance (ID scheme confirmed from
+    // ace3/addons/arsenal/functions/fnc_addSort.sqf: class+side+zero-padded tab
+    // index) and replace with one that reads the config's real displayName.
+    private _fnc_nativeSortIds = {
+        params ["_class", "_side", "_tabCount"];
+        private _ids = [];
+        for "_i" from 0 to (_tabCount - 1) do {
+            _ids pushBack (_class + _side + ([str _i, format ["0%1", _i]] select (_i < 10)));
+        };
+        _ids
+    };
+
+    (["ACE_alphabetically", "L", 18] call _fnc_nativeSortIds) call ace_arsenal_fnc_removeSort;
+    (["ACE_alphabetically", "R", 8] call _fnc_nativeSortIds) call ace_arsenal_fnc_removeSort;
+
+    [
+        [[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17], [0,1,2,3,4,5,6,7]],
+        QGVAR(sortAlphabetical), "Sort alphabetically",
+        {_this call FUNC(sortStatementAlphabetical)}
+    ] call ace_arsenal_fnc_addSort;
+
     // Sort by pool stock rather than anything ACE natively tracks - applies
-    // to every left/right tab per the framework doc's stat/sort tab numbering.
+    // to every left/right tab per the framework doc's stat/sort tab numbering
+    // (face/voice/insignia excluded, tabs 15-17 left - not pool-tracked items).
     [
         [[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14], [0,1,2,3,4,5,6,7]],
-        QGVAR(sortStock), "Antistasi Stock",
+        QGVAR(sortStock), "Sort by stock",
         {_this call FUNC(sortStatementStock)}
     ] call ace_arsenal_fnc_addSort;
+
+    // Deliberately not reordering "Sort by stock" to the front of the dropdown -
+    // addSort always appends and there's no priority parameter, so doing that
+    // would mean directly mutating GVAR(sortListLeftPanel)/RightPanel, ACE's own
+    // undocumented internal globals. Same reach-into-internals risk we avoided
+    // everywhere else this session (not hiding tabs via display controls, not
+    // patching GVAR(center) to accept non-CAManBase) - not worth it just for
+    // dropdown position. Both sorts are present and correct, just not first.
 
     // Debounced to let the cargo container actually settle before diffing -
     // matches the pattern antistasi-ace-arsenal uses for the same event.
     ["ace_arsenal_cargoChanged", {
         [{call FUNC(reconcile)}, []] call CBA_fnc_execNextFrame;
+    }] call CBA_fnc_addEventHandler;
+
+    // The "remove all"/"remove selected" buttons clear a container via bulk
+    // clearXCargoGlobal commands, which never fire ace_arsenal_cargoChanged -
+    // antistasi-ace-arsenal hit the same gap and fixed it the same way, control-level
+    // event handlers rather than trying to wrap the underlying function.
+    ["ace_arsenal_displayOpened", {
+        params ["_display"];
+
+        {
+            private _ctrl = _display displayCtrl _x;
+            if (!isNull _ctrl) then {
+                _ctrl ctrlAddEventHandler ["ButtonClick", {
+                    [{call FUNC(reconcile)}, []] call CBA_fnc_execNextFrame;
+                }];
+            };
+        } forEach [ARSENAL_IDC_BTN_REMOVEALL, ARSENAL_IDC_BTN_REMOVEALLSEL];
     }] call CBA_fnc_addEventHandler;
 
     ["ace_arsenal_displayClosed", {
