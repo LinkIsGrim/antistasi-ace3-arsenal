@@ -5,15 +5,16 @@
  * in XEH_postInit.sqf) - sorts items by pool stock rather than anything ACE
  * natively tracks.
  *
- * Uses a plain positive value (unlimited stock as a large sentinel), not a
- * negated one - ACE's sort is fundamentally TEXT-based (confirmed from
+ * Uses a plain positive value (not a negated one) for the same reason as
+ * before - ACE's sort is fundamentally TEXT-based (confirmed from
  * fnc_sortPanel.sqf: lbSortBy ["TEXT", ...]), and negative numbers don't
- * compare correctly as fixed-width text ("-0015.00" doesn't sort before
- * "-0010.00" the way -15 < -10 numerically would suggest - the first pass
- * used negation for this and produced exactly that bug, [15] landing after
- * [10] under a descending sort). Higher stock = higher value here; the UI's
- * own ascending/descending toggle (unrelated to what we return) decides
- * whether that reads as "most available first" or "least available first".
+ * compare correctly as fixed-width text. But inverted (low value = high
+ * stock) from the first pass, which put least-available first under
+ * "Descending" - empirically backwards from what "Descending" should mean
+ * for a stock sort (confirmed in testing, root cause in the ACE/engine
+ * sort-direction plumbing not otherwise identified). Unlimited stock maps
+ * to 0, the lowest possible value, so it still reads as "most available"
+ * under the same direction as any large finite stock count.
  *
  * Arguments:
  * 0: Item config <CONFIG>
@@ -28,6 +29,6 @@
 params [["_itemCfg", configNull, [configNull]], ["_class", "", [""]]];
 
 private _stock = (_class call FUNC(poolFind)) select 1;
-if (_stock == -1) exitWith {999999999};
+if (_stock == -1) exitWith {0};
 
-_stock
+1000000000 - (0 max _stock)
