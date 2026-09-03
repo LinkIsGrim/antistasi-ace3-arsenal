@@ -44,21 +44,16 @@ if (hasInterface) then {
     // ACE's native "Sort alphabetically" has no real statement (ACE_Arsenal_Sorts.hpp:
     // statement = QUOTE({})) - it's a sentinel meaning "sort the control's own
     // rendered row text", which breaks once fnc_decorate.sqf prefixes that text
-    // with a stock label. Remove every tab instance (ID scheme confirmed from
-    // ace3/addons/arsenal/functions/fnc_addSort.sqf: class+side+zero-padded tab
-    // index) and replace with one that reads the config's real displayName.
-    private _fnc_nativeSortIds = {
-        params ["_class", "_side", "_tabCount"];
-        private _ids = [];
-        for "_i" from 0 to (_tabCount - 1) do {
-            _ids pushBack (_class + _side + ([str _i, format ["0%1", _i]] select (_i < 10)));
-        };
-        _ids
-    };
-
-    (["ACE_alphabetically", "L", 18] call _fnc_nativeSortIds) call ace_arsenal_fnc_removeSort;
-    (["ACE_alphabetically", "R", 8] call _fnc_nativeSortIds) call ace_arsenal_fnc_removeSort;
-
+    // with a stock label. Not calling ace_arsenal_fnc_removeSort on it -
+    // confirmed from its own source (fnc_removeSort.sqf) that it hardcodes a
+    // refusal to delete anything with an "ace_alphabetically" id ("make
+    // default sort not deletable"), so it would always be a no-op anyway.
+    // (A first pass called it wrong regardless - unwrapped ID array instead
+    // of ace_arsenal_fnc_removeSort's actual [_idList] calling convention -
+    // which threw and silently aborted the rest of this script, including
+    // everything registered below. Confirmed from the RPT: "Error foreach:
+    // Type String, expected Array,HashMap", fnc_removeSort.sqf line 53.)
+    // Just adding our own alongside it, same display name.
     [
         [[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17], [0,1,2,3,4,5,6,7]],
         QGVAR(sortAlphabetical), "Sort alphabetically",
