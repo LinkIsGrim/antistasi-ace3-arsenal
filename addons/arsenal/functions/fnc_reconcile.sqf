@@ -34,9 +34,7 @@
 // against something once that request resolves. fnc_reconcileResult.sqf
 // always re-runs this function after applying a reply, so it isn't lost -
 // just deferred until the in-flight request clears.
-if (missionNamespace getVariable [QGVAR(busy), false]) exitWith {
-    diag_log text format ["[skuaa3aa_arsenal][DIAG] reconcile: dropped, busy (frame %1)", diag_frameNo];
-};
+if (missionNamespace getVariable [QGVAR(busy), false]) exitWith {};
 
 private _unit = missionNamespace getVariable [QGVAR(snapUnit), objNull];
 if (isNull _unit) exitWith {};
@@ -67,6 +65,28 @@ private _fnc_tally = {
             // a different exact classname than what's in the pool, poolFind
             // can't find it, and the whole take gets refused.
             _class = _class call FUNC(baseClass);
+
+            // Re-check after normalization, not just before - baseClass calls
+            // ace_common_fnc_getConfigName, which returns "" if the classname
+            // isn't found under any of its searched config categories
+            // (CfgWeapons/CfgMagazines/CfgGlasses/CfgVehicles/CfgVoice/
+            // CfgUnitInsignia). JNA's own cargoToArray returns a synthetic
+            // "loose ammo" entry on JNA_TAB_CARGOMAGALL whose classname isn't
+            // a real config class in any of those, so it got zeroed to "" here
+            // and, uncaught, produced a "tab|" key. That key's trailing empty
+            // segment then got silently dropped by splitString when rebuilding
+            // the entry below, leaving a bare [tab] array with no class/amount
+            // - constructing [tab, nil, amount] instead of erroring outright
+            // (confirmed in an RPT as a literal "<null>" element sent to the
+            // server as part of a real taken/returned batch). Server-side,
+            // that phantom entry's failure on a magazine tab routes the WHOLE
+            // batch into "strip" mode instead of a normal charge, and strip
+            // mode never reaches the charge/removeItem loop at all - so
+            // whatever real item was in the same batch (a weapon, ammo) never
+            // got debited from the pool even though the client already had it
+            // equipped. This was the actual mechanism behind the fast-swap
+            // "duplication" exploit, not the busy-gate races fixed earlier.
+            if (_class == "") then {continue};
 
             private _key = format ["%1|%2", _tab, _class];
             _map set [_key, (_map getOrDefault [_key, 0]) + _amount];
@@ -114,11 +134,7 @@ GVAR(busy) = true;
 GVAR(snapPoolProposed) = _new;
 GVAR(snapLoadoutProposed) = getUnitLoadout _unit;
 
-private _reqId = (missionNamespace getVariable [QGVAR(reqCounter), 0]) + 1;
-GVAR(reqCounter) = _reqId;
-diag_log text format ["[skuaa3aa_arsenal][DIAG] reconcile: sending req %1 (frame %2) taken=%3 returned=%4", _reqId, diag_frameNo, _taken, _returned];
-
-[QGVAR(reconcileRequest), [_unit, _taken, _returned, _reqId]] call CBA_fnc_serverEvent;
+[QGVAR(reconcileRequest), [_unit, _taken, _returned]] call CBA_fnc_serverEvent;
 
 // Watchdog: if the reply is ever lost (network hiccup, whatever), GVAR(busy)
 // would otherwise stay true forever and silently disable reconciliation for
