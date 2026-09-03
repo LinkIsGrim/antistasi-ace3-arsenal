@@ -23,12 +23,17 @@ JN_fnc_arsenal_handleAction = compileFinal preprocessFileLineNumbers QPATHTOF(ov
 
 // Same reasoning applies to the transfer dialog - it needs an authoritative
 // pool snapshot to display, and the transfer itself needs server checks.
-[QGVAR(poolSnapshotRequest), {_this call FUNC(serverPoolSnapshot)}] call CBA_fnc_addEventHandler;
 [QGVAR(transferRequest), {_this call FUNC(serverTransfer)}] call CBA_fnc_addEventHandler;
+
+// Stock JNA only ever populates a client's local jna_dataList as a side
+// effect of jn_fnc_arsenal_requestOpen, which we never call (it also opens
+// the real BIS arsenal). This is that side effect without the BIS-arsenal
+// part - see fnc_serverSyncDataList.sqf's header.
+[QGVAR(dataListRequest), {_this call FUNC(serverSyncDataList)}] call CBA_fnc_addEventHandler;
 
 if (hasInterface) then {
     [QGVAR(reconcileResult), {_this call FUNC(reconcileResult)}] call CBA_fnc_addEventHandler;
-    [QGVAR(poolSnapshotResult), {_this call FUNC(poolSnapshotResult)}] call CBA_fnc_addEventHandler;
+    [QGVAR(dataListResult), {_this call FUNC(dataListResult)}] call CBA_fnc_addEventHandler;
     [QGVAR(transferResult), {_this call FUNC(transferResult)}] call CBA_fnc_addEventHandler;
 
     // Debounced to let the cargo container actually settle before diffing -

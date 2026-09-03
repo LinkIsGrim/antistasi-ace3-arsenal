@@ -27,10 +27,13 @@ if (!alive player) exitWith {};
 // itself) - reused as-is rather than reimplemented, identical across CE/Ultimate/TEH.
 ["SaveTFAR"] call jn_fnc_arsenal;
 
-[_box] call FUNC(syncPool);
-
 GVAR(snapUnit) = player;
 GVAR(snapPool) = [player, true] call jn_fnc_arsenal_cargoToArray;
 GVAR(snapLoadout) = getUnitLoadout player;
 
-[_box, player] call ace_arsenal_fnc_openBox;
+[{
+    private _box = missionNamespace getVariable ["jna_object", objNull];
+    if (isNull _box) exitWith {};
+    [_box] call FUNC(syncPool);
+    [_box, player] call ace_arsenal_fnc_openBox;
+}] call FUNC(requestDataListSync);

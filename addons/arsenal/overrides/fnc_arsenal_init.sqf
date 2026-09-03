@@ -77,12 +77,14 @@ if (hasInterface) then {
     ];
 
     // TEH-only extras. Called directly against TEH's own functions - none of
-    // these open an arsenal display, so there's nothing for us to bridge.
+    // these open an arsenal display, so there's nothing for us to bridge, but
+    // they all read jna_dataList directly (bullet-pile lookups, stock checks),
+    // so each is wrapped in a sync request first - see fnc_requestDataListSync.sqf.
     if (!isNil "JN_fnc_arsenal_quickReload") then {
         _object addAction [
             format ["<img image='%1' size='1.6' shadow=2/><t size='1'> %2</t>",
                 "\A3\Ui_f\data\IGUI\Cfg\Actions\reload_ca.paa", "Quick resupply"],
-            {[vehicle player] call JN_fnc_arsenal_quickReload},
+            {[{[vehicle player] call JN_fnc_arsenal_quickReload}] call FUNC(requestDataListSync)},
             [], 15, true, false, "", "true"
         ];
     };
@@ -92,12 +94,14 @@ if (hasInterface) then {
             format ["<img image='%1' size='1.6' shadow=2/><t size='1'> %2</t>",
                 "\A3\Ui_f\data\GUI\Rsc\RscDisplayArsenal\uniform_ca.paa", "Equip last loadout"],
             {
-                private _template = player getVariable ["lastArsenalLoadout", ""];
-                if (_template != "") then {
-                    _template call JN_fnc_arsenal_loadInventory;
-                } else {
-                    ["No saved loadout yet - save or load one from the arsenal first."] call BIS_fnc_error;
-                };
+                [{
+                    private _template = player getVariable ["lastArsenalLoadout", ""];
+                    if (_template != "") then {
+                        _template call JN_fnc_arsenal_loadInventory;
+                    } else {
+                        ["No saved loadout yet - save or load one from the arsenal first."] call BIS_fnc_error;
+                    };
+                }] call FUNC(requestDataListSync);
             },
             [], 6, true, false, "",
             "alive _target && {_target distance _this < 5} && {vehicle player == player}"
@@ -108,7 +112,7 @@ if (hasInterface) then {
         _object addAction [
             format ["<img image='%1' size='1.6' shadow=2/><t size='1'> %2</t>",
                 "\A3\Ui_f\data\GUI\Rsc\RscDisplayArsenal\CargoMagAll_ca.paa", "Mag Service"],
-            {[] call A3A_fnc_MagConvert_open},
+            {[{[] call A3A_fnc_MagConvert_open}] call FUNC(requestDataListSync)},
             [], 6, true, false, "",
             "alive _target && {_target distance _this < 5} && {vehicle player == player}"
         ];

@@ -45,11 +45,14 @@ if (!isNil "_loadout") then {
     player setUnitLoadout +_loadout;
 };
 
-[_box] call FUNC(syncPool);
-
 GVAR(snapUnit) = player;
 GVAR(snapPool) = [player, true] call jn_fnc_arsenal_cargoToArray;
 GVAR(snapLoadout) = getUnitLoadout player;
 GVAR(loadoutMode) = true;
 
-[_box, player] call ace_arsenal_fnc_openBox;
+[{
+    private _box = missionNamespace getVariable ["jna_object", objNull];
+    if (isNull _box) exitWith {};
+    [_box] call FUNC(syncPool);
+    [_box, player] call ace_arsenal_fnc_openBox;
+}] call FUNC(requestDataListSync);

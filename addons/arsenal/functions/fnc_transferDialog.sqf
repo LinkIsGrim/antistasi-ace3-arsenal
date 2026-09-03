@@ -3,10 +3,10 @@
  * Author: LinkIsGrim
  * Client-side dispatcher for the arsenal <-> container transfer dialog
  * (dialogues/transferDialog.hpp). GVAR(transferContainer) is set by
- * fnc_openContainer.sqf before the dialog is created; GVAR(transferPool)
- * is a server-sourced snapshot (fnc_poolSnapshotResult.sqf), since
- * jna_dataList isn't reliable to read client-side (see fnc_reconcile.sqf's
- * header for why).
+ * fnc_openContainer.sqf before the dialog is created. The pool side reads
+ * jna_dataList directly - kept fresh via fnc_requestDataListSync.sqf on
+ * load, since it isn't reliable to read client-side otherwise (see
+ * fnc_serverSyncDataList.sqf's header for why).
  *
  * Arguments:
  * 0: Mode <STRING>
@@ -32,13 +32,12 @@ switch (_mode) do {
 
     case "onLoad": {
         _params params ["_display"];
-        [QGVAR(poolSnapshotRequest), [player]] call CBA_fnc_serverEvent;
         ["fill"] call FUNC(transferDialog);
+        [{["fill"] call FUNC(transferDialog)}] call FUNC(requestDataListSync);
     };
 
     case "onUnload": {
         GVAR(transferContainer) = objNull;
-        GVAR(transferPool) = nil;
     };
 
     case "search": {
@@ -83,9 +82,13 @@ switch (_mode) do {
             } forEach _rows;
         };
 
-        private _poolEntries = (missionNamespace getVariable [QGVAR(transferPool), []]) apply {
-            _x params ["_tab", "_class", "_count"];
-            [_class, _count]
+        private _poolEntries = [];
+        if (!isNil "jna_dataList") then {
+            {
+                private _tab = _forEachIndex;
+                if (_tab in [JNA_TAB_FACE, JNA_TAB_VOICE, JNA_TAB_INSIGNIA, JNA_TAB_CARGOMAG, JNA_TAB_CARGOBULLET]) then {continue};
+                _poolEntries append _x;
+            } forEach jna_dataList;
         };
         [_poolList, _poolEntries] call _fnc_addRows;
 
