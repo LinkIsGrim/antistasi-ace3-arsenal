@@ -28,7 +28,22 @@
  * call FUNC(reconcile)
  */
 
-if (missionNamespace getVariable [QGVAR(busy), false]) exitWith {};
+// Don't just drop this while a previous proposal is in flight - the change
+// that triggered this call (e.g. swapping back to the original item before
+// the first swap's round trip even resolves) would otherwise never get
+// diffed against anything: fnc_reconcileResult.sqf rebases GVAR(snapPool) on
+// the unit's state AT REPLY TIME, so a dropped call in between is gone for
+// good, not merely delayed. That let a fast A->B->A swap net-credit the pool
+// for A (via the first call's "return A") without ever re-charging it (the
+// second call, which would have taken A again, never happened) - confirmed
+// exploitable as "alternate between two weapons to keep increasing stock".
+// Re-running once busy clears (below, and in fnc_reconcileResult.sqf) closes
+// that window.
+if (missionNamespace getVariable [QGVAR(busy), false]) exitWith {GVAR(reconcilePending) = true;};
+
+// This call is actually going to run to completion (whether or not it finds
+// any delta below) - any earlier "missed while busy" is accounted for now.
+GVAR(reconcilePending) = false;
 
 private _unit = missionNamespace getVariable [QGVAR(snapUnit), objNull];
 if (isNull _unit) exitWith {};

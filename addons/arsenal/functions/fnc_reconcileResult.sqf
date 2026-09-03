@@ -31,6 +31,16 @@ switch (_mode) do {
             private _display = findDisplay ARSENAL_IDD;
             if (!isNull _display) then {_display call FUNC(decorate)};
         }] call FUNC(requestDataListSync);
+
+        // A change that happened while this request was in flight (e.g.
+        // swapping back to the original item before this reply even landed)
+        // got dropped by fnc_reconcile.sqf's busy-gate rather than diffed -
+        // see that file's header. Catch it now against the fresh snapshot
+        // just above, or it's gone for good (an exploitable free take/phantom
+        // return, confirmed in testing).
+        if (missionNamespace getVariable [QGVAR(reconcilePending), false]) then {
+            call FUNC(reconcile);
+        };
     };
 
     case "revert": {
@@ -42,6 +52,11 @@ switch (_mode) do {
         GVAR(snapLoadout) = getUnitLoadout _unit;
         GVAR(stripDepth) = 0;
         GVAR(busy) = false;
+
+        // Same reasoning as the "ok" case above.
+        if (missionNamespace getVariable [QGVAR(reconcilePending), false]) then {
+            call FUNC(reconcile);
+        };
     };
 
     case "strip": {
