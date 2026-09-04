@@ -32,7 +32,7 @@ JN_fnc_arsenal_handleAction = compileFinal preprocessFileLineNumbers QPATHTOF(ov
 [QGVAR(dataListRequest), {_this call FUNC(serverSyncDataList)}] call CBA_fnc_addEventHandler;
 
 if (hasInterface) then {
-    [QGVAR(reconcileResult), {_this call FUNC(reconcileResult)}] call CBA_fnc_addEventHandler;
+    [QGVAR(reconcileResult), {_this call FUNC(resolveReconcilePromise)}] call CBA_fnc_addEventHandler;
     [QGVAR(dataListResult), {_this call FUNC(dataListResult)}] call CBA_fnc_addEventHandler;
     [QGVAR(transferResult), {_this call FUNC(transferResult)}] call CBA_fnc_addEventHandler;
 

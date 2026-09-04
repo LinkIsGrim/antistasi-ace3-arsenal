@@ -2,9 +2,10 @@
 /*
  * Author: LinkIsGrim
  * Server-side: authoritative accept/refuse for a client's proposed pool
- * deltas (fnc_reconcile.sqf), registered against QGVAR(reconcileRequest)
+ * deltas (fnc_flushReconcile.sqf), registered against QGVAR(reconcileRequest)
  * in XEH_postInit.sqf. Replies with QGVAR(reconcileResult) targeted at the
- * unit, see fnc_reconcileResult.sqf for how the client applies it.
+ * unit, see fnc_resolveReconcilePromise.sqf/fnc_reconcileResult.sqf for how
+ * the client applies it.
  *
  * A single forbidden/out-of-stock/member-limit failure on a non-magazine
  * item aborts the whole batch (client reverts its entire loadout to its own
@@ -17,8 +18,6 @@
  * 0: Unit the proposal came from <OBJECT>
  * 1: Taken entries, [[tab, class, amount], ...] <ARRAY>
  * 2: Returned entries, [[tab, class, amount], ...] <ARRAY>
- * 3: Request id, echoed back in the reply so a late one can be told apart
- *    from the current in-flight request client-side <NUMBER>
  *
  * Return Value:
  * None
@@ -26,7 +25,7 @@
 
 if (!isServer) exitWith {};
 
-params [["_unit", objNull, [objNull]], ["_taken", [], [[]]], ["_returned", [], [[]]], ["_reqId", -1, [0]]];
+params [["_unit", objNull, [objNull]], ["_taken", [], [[]]], ["_returned", [], [[]]]];
 
 if (isNull _unit) exitWith {};
 
@@ -73,11 +72,11 @@ private _charge = [];
 } forEach _taken;
 
 if (_refusalMsg != "") exitWith {
-    [QGVAR(reconcileResult), ["revert", _refusalMsg, _reqId], _unit] call CBA_fnc_targetEvent;
+    [QGVAR(reconcileResult), ["revert", _refusalMsg], _unit] call CBA_fnc_targetEvent;
 };
 
 if (_stripMags isNotEqualTo []) exitWith {
-    [QGVAR(reconcileResult), ["strip", _stripMags, _reqId], _unit] call CBA_fnc_targetEvent;
+    [QGVAR(reconcileResult), ["strip", _stripMags], _unit] call CBA_fnc_targetEvent;
 };
 
 {
@@ -106,4 +105,4 @@ if (_stripMags isNotEqualTo []) exitWith {
 // silently wedging reconciliation permanently if that payload ever failed
 // to arrive cleanly. The client asks for a fresh jna_dataList separately
 // via fnc_requestDataListSync.sqf's own dedicated, already-proven channel.
-[QGVAR(reconcileResult), ["ok", "", _reqId], _unit] call CBA_fnc_targetEvent;
+[QGVAR(reconcileResult), ["ok"], _unit] call CBA_fnc_targetEvent;

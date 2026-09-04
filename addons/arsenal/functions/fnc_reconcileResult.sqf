@@ -2,30 +2,37 @@
 /*
  * Author: LinkIsGrim
  * Client-side: applies the server's verdict on a pending FUNC(flushReconcile)
- * proposal. Registered against QGVAR(reconcileResult) in XEH_postInit.sqf.
+ * proposal. Run as GVAR(reconcilePromise)'s continuation (see that file) -
+ * either fnc_resolveReconcilePromise.sqf (a real server reply) or
+ * fnc_flushReconcile.sqf's own watchdog (a "timeout") resolves the promise,
+ * and this runs exactly once either way with whatever value won that race.
  *
  * Arguments:
- * 0: "ok", "revert" or "strip" <STRING>
+ * 0: "ok", "revert", "strip" or "timeout" <STRING>
  * 1: Refusal message ("revert") or magazine classnames to strip ("strip") <STRING or ARRAY>
- * 2: The request id this reply answers (see FUNC(flushReconcile)) <NUMBER>
  *
  * Return Value:
  * None
  */
 
-params [["_mode", "", [""]], ["_arg", "", [[], ""]], ["_reqId", -1, [0]]];
-
-// A reply that isn't for the request currently in flight is stale - either the
-// watchdog already gave up on it and moved on (GVAR(busy) is false, nothing to
-// clear), or, less likely but not impossible, it arrived out of order behind a
-// newer request's reply. Applying it anyway would mean acting on a verdict
-// about a batch that isn't (or is no longer) what's actually pending.
-if (_reqId != (missionNamespace getVariable [QGVAR(reconcileToken), -1])) exitWith {};
+params [["_mode", "", [""]], ["_arg", "", [[], ""]]];
 
 private _unit = missionNamespace getVariable [QGVAR(snapUnit), objNull];
 if (isNull _unit) exitWith {GVAR(busy) = false;};
 
 switch (_mode) do {
+    case "timeout": {
+        // The reply was lost somewhere (network hiccup, whatever) - GVAR(busy)
+        // would otherwise stay true forever, silently disabling reconciliation
+        // for the rest of the session. Nothing to revert here (unlike "revert"
+        // below) - the server may or may not have actually applied this batch,
+        // there's no way to tell from a timeout alone, so the safest thing is
+        // to just stop waiting and let the next real change surface whatever
+        // the true state turns out to be.
+        diag_log text "[skuaa3aa_arsenal] Reconcile reply never arrived; clearing busy state.";
+        GVAR(busy) = false;
+    };
+
     case "ok": {
         // A live read is fine here (unlike the old snapshot-diff FUNC(reconcile),
         // which had to rebase to what was actually proposed, not live state, to

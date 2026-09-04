@@ -15,6 +15,18 @@
  * correction (strip/revert) happen once the server's reconcileResult event
  * comes back, see XEH_postInit.sqf.
  *
+ * Uses an Arma 2.22+ promise handle (an "empty" spawn handle, resolved via
+ * terminate) instead of a hand-rolled request id + CBA_fnc_waitAndExecute
+ * watchdog to tell a real reply apart from a timed-out one. Only one is ever
+ * outstanding at a time (see the busy-gate above) so there's no need to
+ * disambiguate BETWEEN multiple in-flight requests the way a request id
+ * would - a handle resolves exactly once by construction, whichever of
+ * fnc_resolveReconcilePromise.sqf (a real reply) or the watchdog below
+ * (timeout) gets there first; guarded (isNull check) against calling
+ * terminate a second time regardless, since that behavior isn't something
+ * this addon has actually been able to verify at runtime yet - 2.22 is very
+ * recent and nothing in this repo has run against it.
+ *
  * Arguments:
  * None
  *
@@ -58,24 +70,23 @@ GVAR(pendingReturned) = createHashMap;
 // FUNC(onItemsChanged) to pick up on its own.
 GVAR(lastSentTaken) = _taken;
 
-// Echoed back in every fnc_serverReconcile.sqf reply and checked in
-// fnc_reconcileResult.sqf - not just for the watchdog below anymore. A reply
-// that arrives late (after the watchdog already gave up and moved on, or after
-// this request got superseded some other way) gets silently discarded instead
-// of being applied against whatever's current by then.
-private _reqId = (missionNamespace getVariable [QGVAR(reconcileToken), 0]) + 1;
-GVAR(reconcileToken) = _reqId;
+private _promise = spawn "skuaa3aa_arsenal_reconcile";
+GVAR(reconcilePromise) = _promise;
 
-[QGVAR(reconcileRequest), [_unit, _taken, _returned, _reqId]] call CBA_fnc_serverEvent;
+// The continuation IS the reply handling from here - fnc_resolveReconcilePromise.sqf
+// (registered against QGVAR(reconcileResult) in XEH_postInit.sqf) or the watchdog
+// below terminates this with the result, whichever happens first; this runs
+// exactly once either way. A real reply's result is ["ok"/"revert"/"strip", _arg];
+// the watchdog's is ["timeout"] - fnc_reconcileResult.sqf's switch handles both.
+_promise continueWith {_this call FUNC(reconcileResult)};
 
-// Watchdog: if the reply is ever lost (network hiccup, whatever), GVAR(busy)
-// would otherwise stay true forever and silently disable reconciliation for
-// the rest of the session - nothing further would ever get checked or
-// charged against the pool.
+[QGVAR(reconcileRequest), [_unit, _taken, _returned]] call CBA_fnc_serverEvent;
+
+// Watchdog: if the reply is ever lost (network hiccup, whatever), the promise
+// would otherwise never resolve and GVAR(busy) would stay true forever,
+// silently disabling reconciliation for the rest of the session - nothing
+// further would ever get checked or charged against the pool.
 [{
-    params ["_reqId"];
-    if (GVAR(busy) && {missionNamespace getVariable [QGVAR(reconcileToken), -1] == _reqId}) then {
-        diag_log text "[skuaa3aa_arsenal] Reconcile reply never arrived; clearing busy state.";
-        GVAR(busy) = false;
-    };
-}, [_reqId], 5] call CBA_fnc_waitAndExecute;
+    params ["_promise"];
+    if !(isNull _promise) then {_promise terminate ["timeout"]};
+}, [_promise], 5] call CBA_fnc_waitAndExecute;
