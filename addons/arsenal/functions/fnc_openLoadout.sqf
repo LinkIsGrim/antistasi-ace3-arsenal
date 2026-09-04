@@ -46,7 +46,7 @@ if (!isNil "_loadout") then {
 };
 
 GVAR(snapUnit) = player;
-GVAR(snapLoadout) = getUnitLoadout player;
+GVAR(snapLoadout) = player call CBA_fnc_getLoadout;
 GVAR(loadoutMode) = true;
 
 GVAR(pendingTaken) = createHashMap;

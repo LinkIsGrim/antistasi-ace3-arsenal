@@ -13,6 +13,7 @@ PREP(onItemsChanged);
 PREP(flushReconcile);
 PREP(serverReconcile);
 PREP(reconcileResult);
+PREP(onPoolChanged);
 PREP(transferDialog);
 PREP(serverTransfer);
 PREP(transferResult);

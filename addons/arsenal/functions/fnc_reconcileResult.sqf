@@ -7,12 +7,20 @@
  * Arguments:
  * 0: "ok", "revert" or "strip" <STRING>
  * 1: Refusal message ("revert") or magazine classnames to strip ("strip") <STRING or ARRAY>
+ * 2: The request id this reply answers (see FUNC(flushReconcile)) <NUMBER>
  *
  * Return Value:
  * None
  */
 
-params [["_mode", "", [""]], ["_arg", "", [[], ""]]];
+params [["_mode", "", [""]], ["_arg", "", [[], ""]], ["_reqId", -1, [0]]];
+
+// A reply that isn't for the request currently in flight is stale - either the
+// watchdog already gave up on it and moved on (GVAR(busy) is false, nothing to
+// clear), or, less likely but not impossible, it arrived out of order behind a
+// newer request's reply. Applying it anyway would mean acting on a verdict
+// about a batch that isn't (or is no longer) what's actually pending.
+if (_reqId != (missionNamespace getVariable [QGVAR(reconcileToken), -1])) exitWith {};
 
 private _unit = missionNamespace getVariable [QGVAR(snapUnit), objNull];
 if (isNull _unit) exitWith {GVAR(busy) = false;};
@@ -24,7 +32,11 @@ switch (_mode) do {
         // avoid a self-cancelling diff on the next call) - this is only ever used
         // to know what to revert TO on a later refusal, not to derive future
         // deltas from, so there's no diff to accidentally cancel out.
-        GVAR(snapLoadout) = getUnitLoadout _unit;
+        //
+        // CBA_fnc_getLoadout, not getUnitLoadout - the extended format round-trips
+        // things the plain array doesn't (CBA disposable launcher state among
+        // them), and CBA_fnc_setLoadout is what actually restores it below.
+        GVAR(snapLoadout) = _unit call CBA_fnc_getLoadout;
         GVAR(stripDepth) = 0;
         GVAR(busy) = false;
 
@@ -43,15 +55,24 @@ switch (_mode) do {
     };
 
     case "revert": {
-        _unit setUnitLoadout (missionNamespace getVariable [QGVAR(snapLoadout), getUnitLoadout _unit]);
+        [_unit, (missionNamespace getVariable [QGVAR(snapLoadout), _unit call CBA_fnc_getLoadout])] call CBA_fnc_setLoadout;
         [_arg] call BIS_fnc_error;
         [true, false] call ace_arsenal_fnc_refresh;
 
-        GVAR(snapLoadout) = getUnitLoadout _unit;
+        GVAR(snapLoadout) = _unit call CBA_fnc_getLoadout;
         GVAR(stripDepth) = 0;
         GVAR(busy) = false;
 
-        call FUNC(flushReconcile);
+        // Whatever's sitting in GVAR(pendingTaken)/GVAR(pendingReturned) was
+        // computed as a delta off the state this batch was proposing - now that
+        // the unit's been forced all the way back to the last known-good
+        // snapshot instead, that delta describes a transition that never
+        // actually happened. Resending it would try to charge/credit for items
+        // the unit doesn't hold. Drop it - anything the player does from here
+        // fires its own fresh ace_arsenal_itemsChanged against the now-correct
+        // baseline.
+        GVAR(pendingTaken) = createHashMap;
+        GVAR(pendingReturned) = createHashMap;
     };
 
     case "strip": {

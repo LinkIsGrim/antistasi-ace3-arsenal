@@ -58,20 +58,24 @@ GVAR(pendingReturned) = createHashMap;
 // FUNC(onItemsChanged) to pick up on its own.
 GVAR(lastSentTaken) = _taken;
 
-[QGVAR(reconcileRequest), [_unit, _taken, _returned]] call CBA_fnc_serverEvent;
+// Echoed back in every fnc_serverReconcile.sqf reply and checked in
+// fnc_reconcileResult.sqf - not just for the watchdog below anymore. A reply
+// that arrives late (after the watchdog already gave up and moved on, or after
+// this request got superseded some other way) gets silently discarded instead
+// of being applied against whatever's current by then.
+private _reqId = (missionNamespace getVariable [QGVAR(reconcileToken), 0]) + 1;
+GVAR(reconcileToken) = _reqId;
+
+[QGVAR(reconcileRequest), [_unit, _taken, _returned, _reqId]] call CBA_fnc_serverEvent;
 
 // Watchdog: if the reply is ever lost (network hiccup, whatever), GVAR(busy)
 // would otherwise stay true forever and silently disable reconciliation for
 // the rest of the session - nothing further would ever get checked or
-// charged against the pool. Token-gated so a reply that arrives in time
-// (clearing busy and bumping the token) doesn't get clobbered by a stale
-// watchdog from an earlier request.
-private _token = (missionNamespace getVariable [QGVAR(reconcileToken), 0]) + 1;
-GVAR(reconcileToken) = _token;
+// charged against the pool.
 [{
-    params ["_token"];
-    if (GVAR(busy) && {missionNamespace getVariable [QGVAR(reconcileToken), -1] == _token}) then {
+    params ["_reqId"];
+    if (GVAR(busy) && {missionNamespace getVariable [QGVAR(reconcileToken), -1] == _reqId}) then {
         diag_log text "[skuaa3aa_arsenal] Reconcile reply never arrived; clearing busy state.";
         GVAR(busy) = false;
     };
-}, [_token], 5] call CBA_fnc_waitAndExecute;
+}, [_reqId], 5] call CBA_fnc_waitAndExecute;

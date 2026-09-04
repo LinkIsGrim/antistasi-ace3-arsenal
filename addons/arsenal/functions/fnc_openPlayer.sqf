@@ -28,7 +28,7 @@ if (!alive player) exitWith {};
 ["SaveTFAR"] call jn_fnc_arsenal;
 
 GVAR(snapUnit) = player;
-GVAR(snapLoadout) = getUnitLoadout player;
+GVAR(snapLoadout) = player call CBA_fnc_getLoadout;
 
 // Fresh per session - FUNC(onItemsChanged)/FUNC(flushReconcile) accumulate and
 // send off these, not a loadout snapshot diff (see fnc_flushReconcile.sqf's

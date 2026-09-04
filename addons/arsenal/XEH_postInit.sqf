@@ -36,6 +36,9 @@ if (hasInterface) then {
     [QGVAR(dataListResult), {_this call FUNC(dataListResult)}] call CBA_fnc_addEventHandler;
     [QGVAR(transferResult), {_this call FUNC(transferResult)}] call CBA_fnc_addEventHandler;
 
+    // Broadcast (not targeted) - see fnc_onPoolChanged.sqf's header for why.
+    [QGVAR(poolChanged), {_this call FUNC(onPoolChanged)}] call CBA_fnc_addEventHandler;
+
     // Counts/colors/tooltips - ACE's panels have no native concept of any of
     // this, decorated on after the fact. See fnc_decorate.sqf's header.
     ["ace_arsenal_leftPanelFilled", {(_this select 0) call FUNC(decorate)}] call CBA_fnc_addEventHandler;

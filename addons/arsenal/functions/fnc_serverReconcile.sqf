@@ -17,6 +17,8 @@
  * 0: Unit the proposal came from <OBJECT>
  * 1: Taken entries, [[tab, class, amount], ...] <ARRAY>
  * 2: Returned entries, [[tab, class, amount], ...] <ARRAY>
+ * 3: Request id, echoed back in the reply so a late one can be told apart
+ *    from the current in-flight request client-side <NUMBER>
  *
  * Return Value:
  * None
@@ -24,7 +26,7 @@
 
 if (!isServer) exitWith {};
 
-params [["_unit", objNull, [objNull]], ["_taken", [], [[]]], ["_returned", [], [[]]]];
+params [["_unit", objNull, [objNull]], ["_taken", [], [[]]], ["_returned", [], [[]]], ["_reqId", -1, [0]]];
 
 if (isNull _unit) exitWith {};
 
@@ -71,11 +73,11 @@ private _charge = [];
 } forEach _taken;
 
 if (_refusalMsg != "") exitWith {
-    [QGVAR(reconcileResult), ["revert", _refusalMsg], _unit] call CBA_fnc_targetEvent;
+    [QGVAR(reconcileResult), ["revert", _refusalMsg, _reqId], _unit] call CBA_fnc_targetEvent;
 };
 
 if (_stripMags isNotEqualTo []) exitWith {
-    [QGVAR(reconcileResult), ["strip", _stripMags], _unit] call CBA_fnc_targetEvent;
+    [QGVAR(reconcileResult), ["strip", _stripMags, _reqId], _unit] call CBA_fnc_targetEvent;
 };
 
 {
@@ -88,10 +90,20 @@ if (_stripMags isNotEqualTo []) exitWith {
     [_tab, _class, _amount] call jn_fnc_arsenal_addItem;
 } forEach _returned;
 
+// The pool just changed for everyone, not just _unit - anyone else with an
+// arsenal open right now would otherwise sit on stale stock/counts until
+// their own next interaction happens to trigger a resync. Broadcasting a bare
+// signal rather than the changed entries themselves - cheap for a client with
+// no arsenal open to ignore (fnc_onPoolChanged.sqf checks GVAR(snapUnit)
+// first), and the receiving client already has a proven full-resync channel
+// (fnc_requestDataListSync.sqf) to use instead of trying to apply a partial
+// delta itself.
+[QGVAR(poolChanged), []] call CBA_fnc_globalEvent;
+
 // Deliberately NOT piggybacking jna_dataList on this reply (tried once,
 // reverted) - this event's reply is what clears GVAR(busy) client-side, and
 // riding a potentially large nested array on the same critical path risked
 // silently wedging reconciliation permanently if that payload ever failed
 // to arrive cleanly. The client asks for a fresh jna_dataList separately
 // via fnc_requestDataListSync.sqf's own dedicated, already-proven channel.
-[QGVAR(reconcileResult), ["ok"], _unit] call CBA_fnc_targetEvent;
+[QGVAR(reconcileResult), ["ok", "", _reqId], _unit] call CBA_fnc_targetEvent;
