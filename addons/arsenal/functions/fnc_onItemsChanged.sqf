@@ -15,11 +15,11 @@
  * strip-mode-derailing phantom classname both came from re-deriving deltas
  * from a snapshot instead of being told them directly.
  *
- * Requires an ACE Arsenal build carrying the itemsChanged event - not yet
- * released upstream as of this writing (acemod/ace3 branch
- * arsenal-selection-event). This addon's normal-release fallback is
- * FUNC(reconcile)/the old snapshot-diff path, still present but no longer
- * wired up on this branch.
+ * Doesn't care whether ace_arsenal_itemsChanged is firing natively (ACE
+ * branch arsenal-selection-event, not in any released build as of this
+ * writing) or via FUNC(installItemsChangedPolyfill)'s wrappers around ACE's
+ * real functions - same event name and payload shape either way, this file
+ * just consumes it.
  *
  * Arguments:
  * 0: Arsenal display <DISPLAY> (unused)

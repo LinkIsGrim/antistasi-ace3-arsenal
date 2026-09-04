@@ -39,6 +39,11 @@ if (hasInterface) then {
     // Broadcast (not targeted) - see fnc_onPoolChanged.sqf's header for why.
     [QGVAR(poolChanged), {_this call FUNC(onPoolChanged)}] call CBA_fnc_addEventHandler;
 
+    // ace_arsenal_itemsChanged isn't in any released ACE build yet - see
+    // fnc_installItemsChangedPolyfill.sqf's header for why this addon fires
+    // it itself instead of waiting.
+    call FUNC(installItemsChangedPolyfill);
+
     // Counts/colors/tooltips - ACE's panels have no native concept of any of
     // this, decorated on after the fact. See fnc_decorate.sqf's header.
     ["ace_arsenal_leftPanelFilled", {(_this select 0) call FUNC(decorate)}] call CBA_fnc_addEventHandler;
