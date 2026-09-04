@@ -1,7 +1,7 @@
 #include "script_component.hpp"
 /*
  * Author: LinkIsGrim
- * Client-side: applies the server's verdict on a pending fnc_reconcile.sqf
+ * Client-side: applies the server's verdict on a pending FUNC(flushReconcile)
  * proposal. Registered against QGVAR(reconcileResult) in XEH_postInit.sqf.
  *
  * Arguments:
@@ -19,19 +19,12 @@ if (isNull _unit) exitWith {GVAR(busy) = false;};
 
 switch (_mode) do {
     case "ok": {
-        // Rebase to what was actually PROPOSED (fnc_reconcile.sqf, set right
-        // before sending), not a fresh live read of the unit. This request
-        // confirmed exactly that state got charged/returned - a live read
-        // here would be indistinguishable from "whatever the player has done
-        // since," so any change made during the round trip (e.g. swapping
-        // back to the original item before this reply even landed, dropped
-        // by the busy-gate) would get silently folded into the new baseline
-        // as if it had already been reconciled, instead of showing up as a
-        // diff for the retry below to catch. Confirmed exploitable (repeated
-        // fast swapping produced free stock) with the live-read version of
-        // this fix.
-        GVAR(snapPool) = missionNamespace getVariable [QGVAR(snapPoolProposed), GVAR(snapPool)];
-        GVAR(snapLoadout) = missionNamespace getVariable [QGVAR(snapLoadoutProposed), GVAR(snapLoadout)];
+        // A live read is fine here (unlike the old snapshot-diff FUNC(reconcile),
+        // which had to rebase to what was actually proposed, not live state, to
+        // avoid a self-cancelling diff on the next call) - this is only ever used
+        // to know what to revert TO on a later refusal, not to derive future
+        // deltas from, so there's no diff to accidentally cancel out.
+        GVAR(snapLoadout) = getUnitLoadout _unit;
         GVAR(stripDepth) = 0;
         GVAR(busy) = false;
 
@@ -43,11 +36,10 @@ switch (_mode) do {
             if (!isNull _display) then {_display call FUNC(decorate)};
         }] call FUNC(requestDataListSync);
 
-        // Always re-diff against the baseline just set, not just when a call
-        // was known to be dropped - catches anything that happened during
-        // the round trip, whether or not fnc_reconcile.sqf's busy-gate ever
-        // actually fired for it. Cheap no-op if nothing changed.
-        call FUNC(reconcile);
+        // Catches anything ace_arsenal_itemsChanged reported while this request
+        // was in flight - FUNC(onItemsChanged) already folded it into
+        // GVAR(pendingTaken)/GVAR(pendingReturned), this just sends it.
+        call FUNC(flushReconcile);
     };
 
     case "revert": {
@@ -55,14 +47,11 @@ switch (_mode) do {
         [_arg] call BIS_fnc_error;
         [true, false] call ace_arsenal_fnc_refresh;
 
-        GVAR(snapPool) = [_unit, true] call jn_fnc_arsenal_cargoToArray;
         GVAR(snapLoadout) = getUnitLoadout _unit;
         GVAR(stripDepth) = 0;
         GVAR(busy) = false;
 
-        // Same reasoning as the "ok" case above - catch anything that
-        // happened during the round trip.
-        call FUNC(reconcile);
+        call FUNC(flushReconcile);
     };
 
     case "strip": {
@@ -80,6 +69,21 @@ switch (_mode) do {
         [true, false] call ace_arsenal_fnc_refresh;
 
         GVAR(busy) = false;
-        call FUNC(reconcile);
+
+        // Nothing in the batch that led here was ever charged - strip mode
+        // short-circuits fnc_serverReconcile.sqf before its charge loop - so
+        // everything except the stripped magazine(s) still needs to go through.
+        // stripMagazines mutates the unit directly, not through anything
+        // ace_arsenal_itemsChanged covers, so it has to be re-queued by hand
+        // rather than picked up automatically.
+        {
+            _x params ["_tab", "_class", "_amount"];
+            if !(_class in _arg) then {
+                private _tabMap = GVAR(pendingTaken) getOrDefaultCall [_tab, {createHashMap}, true];
+                _tabMap set [_class, (_tabMap getOrDefault [_class, 0]) + _amount];
+            };
+        } forEach (missionNamespace getVariable [QGVAR(lastSentTaken), []]);
+
+        call FUNC(flushReconcile);
     };
 };

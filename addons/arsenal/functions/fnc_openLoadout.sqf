@@ -46,9 +46,13 @@ if (!isNil "_loadout") then {
 };
 
 GVAR(snapUnit) = player;
-GVAR(snapPool) = [player, true] call jn_fnc_arsenal_cargoToArray;
 GVAR(snapLoadout) = getUnitLoadout player;
 GVAR(loadoutMode) = true;
+
+GVAR(pendingTaken) = createHashMap;
+GVAR(pendingReturned) = createHashMap;
+GVAR(busy) = false;
+GVAR(stripDepth) = 0;
 
 [{
     private _box = missionNamespace getVariable ["jna_object", objNull];

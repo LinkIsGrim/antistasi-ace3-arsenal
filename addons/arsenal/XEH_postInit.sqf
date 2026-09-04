@@ -18,7 +18,7 @@ JN_fnc_arsenal_init = compileFinal preprocessFileLineNumbers QPATHTOF(overrides\
 JN_fnc_arsenal_handleAction = compileFinal preprocessFileLineNumbers QPATHTOF(overrides\fnc_arsenal_handleAction.sqf);
 
 // Server-authoritative accept/refuse for a client's proposed pool deltas -
-// see fnc_reconcile.sqf's header for why this can't be decided client-side.
+// see fnc_flushReconcile.sqf's header for why this can't be decided client-side.
 [QGVAR(reconcileRequest), {_this call FUNC(serverReconcile)}] call CBA_fnc_addEventHandler;
 
 // Same reasoning applies to the transfer dialog - it needs an authoritative
@@ -38,30 +38,18 @@ if (hasInterface) then {
 
     // Counts/colors/tooltips - ACE's panels have no native concept of any of
     // this, decorated on after the fact. See fnc_decorate.sqf's header.
-    //
-    // Also the broadest available signal for triggering a reconcile: neither
-    // left-panel equip swaps (weapon/uniform/vest/backpack/etc, confirmed
-    // from fnc_onSelChangedLeft.sqf) nor right-panel attachment/optic picks
-    // (fires ace_arsenal_weaponItemChanged instead, confirmed from
-    // fnc_onSelChangedRight.sqf) fire ace_arsenal_cargoChanged at all - only
-    // actual cargo-container add/remove does. But a left-panel weapon swap
-    // does trigger an internal right-panel refill as a side effect
-    // (fnc_onSelChangedLeft.sqf calls FUNC(fillRightPanel) directly), which
-    // reaches us here - broader coverage than chasing every specific event.
-    ["ace_arsenal_leftPanelFilled", {
-        (_this select 0) call FUNC(decorate);
-        [{call FUNC(reconcile)}, []] call CBA_fnc_execNextFrame;
-    }] call CBA_fnc_addEventHandler;
-    ["ace_arsenal_rightPanelFilled", {
-        (_this select 0) call FUNC(decorate);
-        [{call FUNC(reconcile)}, []] call CBA_fnc_execNextFrame;
-    }] call CBA_fnc_addEventHandler;
+    ["ace_arsenal_leftPanelFilled", {(_this select 0) call FUNC(decorate)}] call CBA_fnc_addEventHandler;
+    ["ace_arsenal_rightPanelFilled", {(_this select 0) call FUNC(decorate)}] call CBA_fnc_addEventHandler;
 
-    // Belt and braces for the specific attachment-change case, since it's a
-    // more direct signal than relying on the right-panel-refill side effect.
-    ["ace_arsenal_weaponItemChanged", {
-        [{call FUNC(reconcile)}, []] call CBA_fnc_execNextFrame;
-    }] call CBA_fnc_addEventHandler;
+    // What actually drives reconciliation now - one generic event covering
+    // every way an item can move in or out of the arsenal (weapon/attachment/
+    // magazine picks, cargo add/remove, remove-all, loadout load/import), fired
+    // by ACE itself rather than pieced together from cargoChanged/
+    // weaponItemChanged/leftPanelFilled/rightPanelFilled plus manual button
+    // hooks the way this used to be. See fnc_onItemsChanged.sqf's header for
+    // why this is also what fixed the bug class the old snapshot-diff approach
+    // kept hitting, not just a cleanup.
+    ["ace_arsenal_itemsChanged", {_this call FUNC(onItemsChanged)}] call CBA_fnc_addEventHandler;
 
     // Sort by pool stock rather than anything ACE natively tracks - applies
     // to every left/right tab per the framework doc's stat/sort tab numbering
@@ -101,33 +89,11 @@ if (hasInterface) then {
     // patching GVAR(center) to accept non-CAManBase) - not worth it just for
     // dropdown position. Both sorts are present and correct, just not first.
 
-    // Debounced to let the cargo container actually settle before diffing -
-    // matches the pattern antistasi-ace-arsenal uses for the same event.
-    ["ace_arsenal_cargoChanged", {
-        [{call FUNC(reconcile)}, []] call CBA_fnc_execNextFrame;
-    }] call CBA_fnc_addEventHandler;
-
-    // The "remove all"/"remove selected" buttons clear a container via bulk
-    // clearXCargoGlobal commands, which never fire ace_arsenal_cargoChanged -
-    // antistasi-ace-arsenal hit the same gap and fixed it the same way, control-level
-    // event handlers rather than trying to wrap the underlying function.
-    ["ace_arsenal_displayOpened", {
-        params ["_display"];
-
-        {
-            private _ctrl = _display displayCtrl _x;
-            if (!isNull _ctrl) then {
-                _ctrl ctrlAddEventHandler ["ButtonClick", {
-                    [{call FUNC(reconcile)}, []] call CBA_fnc_execNextFrame;
-                }];
-            };
-        } forEach [ARSENAL_IDC_BTN_REMOVEALL, ARSENAL_IDC_BTN_REMOVEALLSEL];
-    }] call CBA_fnc_addEventHandler;
-
     ["ace_arsenal_displayClosed", {
-        // Catches anything a debounced cargoChanged reconcile hasn't settled yet
-        // (e.g. a change right before close) before the snapshot state is torn down.
-        call FUNC(reconcile);
+        // Catches anything ace_arsenal_itemsChanged reported that hasn't been
+        // sent yet (e.g. a change right before close) before the snapshot
+        // state below is torn down.
+        call FUNC(flushReconcile);
 
         ["RestoreTFAR"] call jn_fnc_arsenal;
 
@@ -139,8 +105,8 @@ if (hasInterface) then {
             currentRebelLoadout = nil;
         };
 
-        // Deliberately not clearing GVAR(snapUnit)/snapPool/snapLoadout here - the
-        // reconcile call just above is a server round-trip, and fnc_reconcileResult.sqf
+        // Deliberately not clearing GVAR(snapUnit)/snapLoadout here - the
+        // flushReconcile call just above is a server round-trip, and fnc_reconcileResult.sqf
         // needs them intact when the reply lands after this handler returns. They get
         // reset fresh at the start of the next fnc_openPlayer.sqf/fnc_openLoadout.sqf
         // anyway, so there's nothing to gain from nulling them early - only the risk of

@@ -61,8 +61,6 @@
 #define ARSENAL_IDC_LEFTLIST 13
 #define ARSENAL_IDC_RIGHTLIST 14
 #define ARSENAL_IDC_RIGHTLISTNB 15
-#define ARSENAL_IDC_BTN_REMOVEALLSEL 39
-#define ARSENAL_IDC_BTN_REMOVEALL 40
 
 // Saturated/high-contrast on purpose - the first pass used pastel tones that
 // blended into ACE's row-selection highlight, making them unreadable exactly

@@ -28,8 +28,15 @@ if (!alive player) exitWith {};
 ["SaveTFAR"] call jn_fnc_arsenal;
 
 GVAR(snapUnit) = player;
-GVAR(snapPool) = [player, true] call jn_fnc_arsenal_cargoToArray;
 GVAR(snapLoadout) = getUnitLoadout player;
+
+// Fresh per session - FUNC(onItemsChanged)/FUNC(flushReconcile) accumulate and
+// send off these, not a loadout snapshot diff (see fnc_flushReconcile.sqf's
+// header), so there's no equivalent "seed the baseline" step needed here.
+GVAR(pendingTaken) = createHashMap;
+GVAR(pendingReturned) = createHashMap;
+GVAR(busy) = false;
+GVAR(stripDepth) = 0;
 
 [{
     private _box = missionNamespace getVariable ["jna_object", objNull];
