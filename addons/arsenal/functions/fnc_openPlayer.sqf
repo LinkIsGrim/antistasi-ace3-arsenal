@@ -29,7 +29,14 @@ if (!alive player) exitWith {};
 
 GVAR(snapUnit) = player;
 GVAR(snapPool) = [player, true] call jn_fnc_arsenal_cargoToArray;
-GVAR(snapLoadout) = getUnitLoadout player;
+GVAR(snapLoadout) = player call CBA_fnc_getLoadout;
+
+// Fresh per session - fnc_reconcile.sqf populates these from its snapshot diff
+// and calls FUNC(flushReconcile) to send whatever's pending.
+GVAR(pendingTaken) = createHashMap;
+GVAR(pendingReturned) = createHashMap;
+GVAR(busy) = false;
+GVAR(stripDepth) = 0;
 
 [{
     private _box = missionNamespace getVariable ["jna_object", objNull];

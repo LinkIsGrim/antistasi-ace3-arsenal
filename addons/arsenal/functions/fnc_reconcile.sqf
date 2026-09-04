@@ -14,9 +14,15 @@
  * launcher ammo only shows up once the launcher is actually equipped (see
  * design-outline.md section 8). Left as a known gap, not silently dropped.
  *
- * Doesn't commit anything itself - the actual pool mutation and any
- * correction (strip/revert) happen once the server's reconcileResult event
- * comes back, see XEH_postInit.sqf.
+ * Doesn't send anything itself - populates GVAR(pendingTaken)/
+ * GVAR(pendingReturned) and hands off to FUNC(flushReconcile), same as
+ * every other source of a pool change (fnc_buttonCargo.sqf etc., in ACE
+ * proper, once ace_arsenal_itemsChanged ships - see the itemschanged-bridge
+ * branch). This is the fallback for as long as that event doesn't exist yet:
+ * re-derive the delta by diffing two loadout snapshots instead of being told
+ * it directly. Slated for replacement once that event is available in a
+ * build this addon can depend on - not deleted here, just isolated so this
+ * branch stays usable against whatever ACE build is actually installed.
  *
  * Arguments:
  * None
@@ -44,7 +50,7 @@ private _old = missionNamespace getVariable [QGVAR(snapPool), []];
 
 if (_old isEqualTo []) exitWith {
     GVAR(snapPool) = _new;
-    GVAR(snapLoadout) = getUnitLoadout _unit;
+    GVAR(snapLoadout) = _unit call CBA_fnc_getLoadout;
 };
 
 private _fnc_tally = {
@@ -122,32 +128,30 @@ private _returned = [];
 
 if (_taken isEqualTo [] && {_returned isEqualTo []}) exitWith {};
 
-GVAR(busy) = true;
-
 // What fnc_reconcileResult.sqf should rebase the snapshot to once this
 // request is confirmed - deliberately NOT a fresh live read of the unit at
 // reply time (see that file's header for why: rebasing to "whatever's true
 // right now" makes the state this request is about to confirm indistinguishable
 // from any further change the player makes before the reply arrives, so a
 // swap-back mid-round-trip would get silently absorbed into the new baseline
-// instead of being caught by the always-on retry below).
+// instead of being caught by the always-on retry FUNC(reconcileResult) does).
 GVAR(snapPoolProposed) = _new;
-GVAR(snapLoadoutProposed) = getUnitLoadout _unit;
+GVAR(snapLoadoutProposed) = _unit call CBA_fnc_getLoadout;
 
-[QGVAR(reconcileRequest), [_unit, _taken, _returned]] call CBA_fnc_serverEvent;
+// Hand off to the shared send path (FUNC(flushReconcile)) via the same
+// GVAR(pendingTaken)/GVAR(pendingReturned) shape every other source of a
+// pool change uses - tab -> classname -> amount, not the "tab|class" string
+// keys this file's own tally above uses internally (that encoding is exactly
+// what caused the phantom-classname exploit documented above; not repeating
+// it past this function's own scope).
+{
+    _x params ["_tab", "_class", "_amount"];
+    (GVAR(pendingTaken) getOrDefaultCall [_tab, {createHashMap}, true]) set [_class, _amount];
+} forEach _taken;
 
-// Watchdog: if the reply is ever lost (network hiccup, whatever), GVAR(busy)
-// would otherwise stay true forever and silently disable reconciliation for
-// the rest of the session - nothing further would ever get checked or
-// charged against the pool. Token-gated so a reply that arrives in time
-// (clearing busy and bumping the token) doesn't get clobbered by a stale
-// watchdog from an earlier request.
-private _token = (missionNamespace getVariable [QGVAR(reconcileToken), 0]) + 1;
-GVAR(reconcileToken) = _token;
-[{
-    params ["_token"];
-    if (GVAR(busy) && {missionNamespace getVariable [QGVAR(reconcileToken), -1] == _token}) then {
-        diag_log text "[skuaa3aa_arsenal] Reconcile reply never arrived; clearing busy state.";
-        GVAR(busy) = false;
-    };
-}, [_token], 5] call CBA_fnc_waitAndExecute;
+{
+    _x params ["_tab", "_class", "_amount"];
+    (GVAR(pendingReturned) getOrDefaultCall [_tab, {createHashMap}, true]) set [_class, _amount];
+} forEach _returned;
+
+call FUNC(flushReconcile);

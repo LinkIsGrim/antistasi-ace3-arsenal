@@ -80,6 +80,7 @@ if (_direction == "toContainer") exitWith {
     [_amount] call _fnc_addToContainer;
     [_foundTab, _foundClass, _amount] call jn_fnc_arsenal_removeItem;
 
+    [QGVAR(poolChanged), []] call CBA_fnc_globalEvent;
     [_unit] call FUNC(serverSyncDataList);
     ["Moved into the container."] call _fnc_report;
 };
@@ -97,6 +98,7 @@ if (_direction == "toPool") exitWith {
     [-_amount] call _fnc_addToContainer;
     [_tab, _class, _amount] call jn_fnc_arsenal_addItem;
 
+    [QGVAR(poolChanged), []] call CBA_fnc_globalEvent;
     [_unit] call FUNC(serverSyncDataList);
     ["Moved into the arsenal."] call _fnc_report;
 };

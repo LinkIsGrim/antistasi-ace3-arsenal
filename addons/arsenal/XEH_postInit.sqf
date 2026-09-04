@@ -32,9 +32,12 @@ JN_fnc_arsenal_handleAction = compileFinal preprocessFileLineNumbers QPATHTOF(ov
 [QGVAR(dataListRequest), {_this call FUNC(serverSyncDataList)}] call CBA_fnc_addEventHandler;
 
 if (hasInterface) then {
-    [QGVAR(reconcileResult), {_this call FUNC(reconcileResult)}] call CBA_fnc_addEventHandler;
+    [QGVAR(reconcileResult), {_this call FUNC(resolveReconcilePromise)}] call CBA_fnc_addEventHandler;
     [QGVAR(dataListResult), {_this call FUNC(dataListResult)}] call CBA_fnc_addEventHandler;
     [QGVAR(transferResult), {_this call FUNC(transferResult)}] call CBA_fnc_addEventHandler;
+
+    // Broadcast (not targeted) - see fnc_onPoolChanged.sqf's header for why.
+    [QGVAR(poolChanged), {_this call FUNC(onPoolChanged)}] call CBA_fnc_addEventHandler;
 
     // Counts/colors/tooltips - ACE's panels have no native concept of any of
     // this, decorated on after the fact. See fnc_decorate.sqf's header.

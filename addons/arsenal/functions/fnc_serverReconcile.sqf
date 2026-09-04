@@ -2,9 +2,10 @@
 /*
  * Author: LinkIsGrim
  * Server-side: authoritative accept/refuse for a client's proposed pool
- * deltas (fnc_reconcile.sqf), registered against QGVAR(reconcileRequest)
+ * deltas (fnc_flushReconcile.sqf), registered against QGVAR(reconcileRequest)
  * in XEH_postInit.sqf. Replies with QGVAR(reconcileResult) targeted at the
- * unit, see fnc_reconcileResult.sqf for how the client applies it.
+ * unit, see fnc_resolveReconcilePromise.sqf/fnc_reconcileResult.sqf for how
+ * the client applies it.
  *
  * A single forbidden/out-of-stock/member-limit failure on a non-magazine
  * item aborts the whole batch (client reverts its entire loadout to its own
@@ -87,6 +88,16 @@ if (_stripMags isNotEqualTo []) exitWith {
     _x params ["_tab", "_class", "_amount"];
     [_tab, _class, _amount] call jn_fnc_arsenal_addItem;
 } forEach _returned;
+
+// The pool just changed for everyone, not just _unit - anyone else with an
+// arsenal open right now would otherwise sit on stale stock/counts until
+// their own next interaction happens to trigger a resync. Broadcasting a bare
+// signal rather than the changed entries themselves - cheap for a client with
+// no arsenal open to ignore (fnc_onPoolChanged.sqf checks GVAR(snapUnit)
+// first), and the receiving client already has a proven full-resync channel
+// (fnc_requestDataListSync.sqf) to use instead of trying to apply a partial
+// delta itself.
+[QGVAR(poolChanged), []] call CBA_fnc_globalEvent;
 
 // Deliberately NOT piggybacking jna_dataList on this reply (tried once,
 // reverted) - this event's reply is what clears GVAR(busy) client-side, and
