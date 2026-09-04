@@ -9,9 +9,12 @@
  * resync.
  *
  * Cheap no-op for anyone without an arsenal session of their own open right
- * now. For everyone else, reuses the same resync/redecorate path
- * fnc_reconcileResult.sqf's "ok" case already uses - no new sync mechanism,
- * just a new trigger for the existing one.
+ * now. For everyone else, reuses the same resync path fnc_reconcileResult.sqf's
+ * "ok" case already uses - no new sync mechanism, just a new trigger for the
+ * existing one. fnc_dataListResult.sqf redecorates unconditionally once the
+ * fresh jna_dataList lands, so this doesn't need its own callback - see that
+ * file's header for why that matters here specifically (this is exactly what
+ * makes overlapping resyncs routine instead of an edge case).
  *
  * Arguments:
  * None
@@ -22,7 +25,4 @@
 
 if (missionNamespace getVariable [QGVAR(snapUnit), objNull] isEqualTo objNull) exitWith {};
 
-[{
-    private _display = findDisplay ARSENAL_IDD;
-    if (!isNull _display) then {_display call FUNC(decorate)};
-}] call FUNC(requestDataListSync);
+call FUNC(requestDataListSync);

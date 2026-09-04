@@ -41,12 +41,9 @@ switch (_mode) do {
         GVAR(busy) = false;
 
         // Separate request, not piggybacked on this reply - see
-        // fnc_serverReconcile.sqf's header for why. Re-decorates once the
-        // fresh jna_dataList actually lands, so counts don't go stale.
-        [{
-            private _display = findDisplay ARSENAL_IDD;
-            if (!isNull _display) then {_display call FUNC(decorate)};
-        }] call FUNC(requestDataListSync);
+        // fnc_serverReconcile.sqf's header for why. fnc_dataListResult.sqf
+        // redecorates unconditionally once the fresh jna_dataList lands.
+        call FUNC(requestDataListSync);
 
         // Catches anything ace_arsenal_itemsChanged reported while this request
         // was in flight - FUNC(onItemsChanged) already folded it into
