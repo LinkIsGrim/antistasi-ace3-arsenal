@@ -135,23 +135,42 @@ if (hasInterface) then {
         ["RestoreTFAR"] call jn_fnc_arsenal;
 
         if (missionNamespace getVariable [QGVAR(loadoutMode), false]) then {
-            // Save whatever's actually equipped as the new fixed loadout for this
-            // role - before restoring the player's own gear below, which would
-            // otherwise overwrite it first. Plain getUnitLoadout, not CBA's
-            // extended format - A3A_fnc_equipRebel indexes rebelLoadouts' stored
-            // array directly (_customLoadout select 0/1/2/etc.), the same shape
-            // this already is.
-            if (!isNil "currentRebelLoadout") then {
-                rebelLoadouts = missionNamespace getVariable ["rebelLoadouts", createHashMap];
-                rebelLoadouts set [currentRebelLoadout, getUnitLoadout player];
-                publicVariable "rebelLoadouts";
-            };
+            // Capture what to save (if anything) BEFORE restoring the player's own
+            // gear below, and restore that gear unconditionally right after -
+            // regardless of whether the save itself goes on to succeed. SQF's
+            // try/catch doesn't apply here (it only catches an explicit throw, not
+            // an actual runtime error - https://community.bistudio.com/wiki/try),
+            // so the real defense is just not letting anything risky sit between
+            // "arsenal closed" and "player has their own gear back" - a bad
+            // interaction with something else touching this same display
+            // shouldn't be able to leave the player stuck in the rebel's gear on
+            // top of whatever else it breaks.
+            private _editedLoadout = getUnitLoadout player;
+            private _roleToSave = currentRebelLoadout;
 
             private _own = GVAR(loadoutBackup);
             if (!isNil "_own") then {player setUnitLoadout _own};
             GVAR(loadoutBackup) = nil;
             GVAR(loadoutMode) = false;
             currentRebelLoadout = nil;
+
+            // Plain getUnitLoadout, not CBA's extended format - A3A_fnc_equipRebel
+            // indexes rebelLoadouts' stored array directly (_customLoadout select
+            // 0/1/2/etc.), the same shape this already is. Type-checked rather
+            // than assumed - a HashMap is expected here (matches
+            // fn_initVarServer.sqf's own DECLARE_SERVER_VAR(rebelLoadouts,
+            // createHashMap)), but this addon doesn't own that variable and isn't
+            // the only thing that can touch it.
+            if (!isNil "_roleToSave") then {
+                private _rebelLoadouts = missionNamespace getVariable ["rebelLoadouts", createHashMap];
+                if (_rebelLoadouts isEqualType createHashMap) then {
+                    rebelLoadouts = _rebelLoadouts;
+                    rebelLoadouts set [_roleToSave, _editedLoadout];
+                    publicVariable "rebelLoadouts";
+                } else {
+                    diag_log text format ["[skuaa3aa_arsenal] rebelLoadouts was %1, not a HashMap - not saving rebel loadout edit for %2.", typeName _rebelLoadouts, _roleToSave];
+                };
+            };
         };
 
         // Deliberately not clearing GVAR(snapUnit)/snapPool/snapLoadout here - the
