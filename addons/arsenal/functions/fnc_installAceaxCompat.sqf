@@ -5,11 +5,30 @@
  * component is actually loaded (isNil guards below), same capture-then-
  * reassign wrap pattern as the JNA hooks in XEH_postInit.sqf.
  *
- * Root cause (confirmed via source, then via a field report that the
- * weak-match suppression alone did NOT fix the phantom left-panel row):
- * some weapon packs (e.g. Robert Hammer's M4/M16 family) define each
- * grip+camo combination as its own separate, hardcoded weapon class rather
- * than a base weapon with CBA-switchable sub-attachments - the model's
+ * ACEAX is explicitly not an officially supported combination for this
+ * addon (see the mod description) - the fixes below are best-effort, kept
+ * because they're harmless/inert against a correctly-configured weapon, not
+ * because the specific field report that prompted them ended up resolved.
+ * That report (a stuck/duplicate left-panel row switching a Mk12/SR10
+ * variant, JCA's lot_aaf_mk12.pbo + AE_JCA_SR10.pbo) turned out to
+ * ultimately be a data bug in that third-party ACEAX compat addon, not
+ * something fixable generically here: the Mk12 (5.56mm) and SR10 (7.62mm)
+ * are two different real weapons that happen to share a model, and
+ * AE_JCA_SR10.pbo's own XtdGearModels groups them under one ACEAX "model" -
+ * switching a "grip/camo variant" can silently jump between calibers.
+ * Confirmed via extracting lot_aaf_mk12.pbo directly (all 6 grip x camo
+ * combinations are real, individually-defined classes, no
+ * ace_arsenal_uniqueBase at all - this weapon's own option space is fully
+ * orthogonal, not sparse) and via the user's own testing (switching turned
+ * the 7.62mm SR10 into the 5.56mm Mk12). Not pursued further - reporting it
+ * to that compat addon's own author is the actual fix, not more special-
+ * casing here.
+ *
+ * Kept regardless for weapon packs that ARE genuinely affected by what this
+ * was originally built for: some weapon packs (e.g. Robert Hammer's M4/M16
+ * family) define each grip+camo combination as its own separate, hardcoded
+ * weapon class rather than a base weapon with CBA-switchable sub-attachments
+ * - the model's
  * option space is SPARSE, not a full cartesian product of every option
  * value. ACE's own left panel already lists each such class as its own
  * independent row with its own stock, entirely unrelated to ACEAX. ACEAX's
@@ -126,17 +145,6 @@ GVAR(aceaxSparseModelOptions) = {
     [["variant", "Variant", "", 0, _values, 0, true, [], false]]
 };
 
-// Temporary diagnostics (strip once the field report is understood) - two
-// rounds of blind ACEAX-side fixes have now both failed to fix the
-// field-reported duplicate row, and the second one's own premise (this
-// weapon's variant space is sparse) turned out to be wrong once the actual
-// loaded weapon pack's config was checked directly (lot_aaf_mk12.pbo
-// defines all 6 grip x camo combinations, no ace_arsenal_uniqueBase at
-// all - fully orthogonal, not sparse). Logging ground truth instead of
-// continuing to patch based on assumptions about ACEAX's own behavior.
-diag_log text format ["[skuaa3aa_arsenal][DIAG] ACEAX compat install: changeCurrentConfig present=%1 generateOptionsUI present=%2",
-    !isNil "aceax_arsenal_fnc_changeCurrentConfig", !isNil "aceax_arsenal_fnc_generateOptionsUI"];
-
 if (!isNil "aceax_arsenal_fnc_changeCurrentConfig") then {
     GVAR(originalAceaxChangeCurrentConfig) = aceax_arsenal_fnc_changeCurrentConfig;
     aceax_arsenal_fnc_changeCurrentConfig = {
@@ -148,9 +156,6 @@ if (!isNil "aceax_arsenal_fnc_changeCurrentConfig") then {
             _options set [_optionIndex, _valueName];
 
             private _exactMatch = [aceax_arsenal_currentConfig, aceax_arsenal_currentModel, _options] call aceax_gearinfo_fnc_findConfig;
-
-            diag_log text format ["[skuaa3aa_arsenal][DIAG] changeCurrentConfig: config=%1 model=%2 optionIndex=%3 valueName=%4 attemptedOptions=%5 exactMatchFound=%6",
-                aceax_arsenal_currentConfig, aceax_arsenal_currentModel, _optionIndex, _valueName, _options, !isNull _exactMatch];
 
             if (isNull _exactMatch) exitWith {
                 ["That combination isn't a valid variant on its own - some options can't be mixed."] call BIS_fnc_error;
@@ -167,9 +172,6 @@ if (!isNil "aceax_arsenal_fnc_generateOptionsUI") then {
         params ["_display", ["_classRoot", ""], ["_selectedModel", ""]];
 
         private _sparse = _selectedModel != "" && {[_classRoot, _selectedModel] call GVAR(aceaxIsSparseModel)};
-
-        diag_log text format ["[skuaa3aa_arsenal][DIAG] generateOptionsUI: classRoot=%1 selectedModel=%2 sparse=%3",
-            _classRoot, _selectedModel, _sparse];
 
         if (_sparse) then {
             private _realGetModelOptions = aceax_gearinfo_fnc_getModelOptions;
