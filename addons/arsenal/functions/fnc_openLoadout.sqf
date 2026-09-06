@@ -2,11 +2,23 @@
 /*
  * Author: LinkIsGrim
  * Opens ACE Arsenal against a rebel role loadout template selected from the
- * commander menu (Ultimate/TEH only - `currentRebelLoadout`/the rebel
- * loadout designer don't exist on CE, see design-outline.md). Temporarily
- * equips the selected role's template so the arsenal reflects what a
- * recruit of that role would actually have, then restores the caller's own
- * gear when the arsenal closes (see XEH_postInit.sqf's displayClosed hook).
+ * commander menu (Ultimate/TEH only - `currentRebelLoadout`/the native
+ * rebel loadout designer (SCRT_fnc_arsenal_loadoutArsenal) don't exist on
+ * CE, which edits rebel loadouts through its own non-arsenal dialog
+ * instead - see design-outline.md). Temporarily equips the selected role's
+ * template so the arsenal reflects what a recruit of that role would
+ * actually have, then saves whatever's actually equipped when the arsenal
+ * closes as the new fixed loadout for that role, and restores the caller's
+ * own gear (see XEH_postInit.sqf's displayClosed hook).
+ *
+ * Deliberately simpler than SCRT's own designer, which supports leaving
+ * individual slots (down to per-weapon-attachment granularity) random
+ * instead of fixed via a per-tab toggle (fn_arsenal_loadoutArsenal.sqf's
+ * "OverrideTab"/"OverrideIDCs", saved as a nil in that slot for
+ * A3A_fnc_equipRebel to randomize from faction defaults) - whatever's
+ * equipped when this closes becomes the new loadout in full, every slot
+ * fixed. No equivalent to that per-slot randomization in this addon's
+ * flow.
  *
  * Arguments:
  * None

@@ -135,6 +135,18 @@ if (hasInterface) then {
         ["RestoreTFAR"] call jn_fnc_arsenal;
 
         if (missionNamespace getVariable [QGVAR(loadoutMode), false]) then {
+            // Save whatever's actually equipped as the new fixed loadout for this
+            // role - before restoring the player's own gear below, which would
+            // otherwise overwrite it first. Plain getUnitLoadout, not CBA's
+            // extended format - A3A_fnc_equipRebel indexes rebelLoadouts' stored
+            // array directly (_customLoadout select 0/1/2/etc.), the same shape
+            // this already is.
+            if (!isNil "currentRebelLoadout") then {
+                rebelLoadouts = missionNamespace getVariable ["rebelLoadouts", createHashMap];
+                rebelLoadouts set [currentRebelLoadout, getUnitLoadout player];
+                publicVariable "rebelLoadouts";
+            };
+
             private _own = GVAR(loadoutBackup);
             if (!isNil "_own") then {player setUnitLoadout _own};
             GVAR(loadoutBackup) = nil;
