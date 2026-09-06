@@ -14,6 +14,23 @@ if (isNil "JN_fnc_arsenal") exitWith {
 // been compiled - deterministic regardless of PBO scan order. See
 // design-outline.md ("Hook mechanism") for why this beats fighting over
 // duplicate CfgFunctions class load order.
+//
+// Captured before either reassignment - overrides/fnc_arsenal_init.sqf calls
+// through to this, deliberately not vendoring/reimplementing Antistasi's own
+// action-adding logic. See that file's header for why: as long as
+// JN_fnc_arsenal_handleAction is reassigned before the real init actually
+// runs (order between these two lines doesn't matter, only "before either
+// is ever invoked" does, and invocation only happens later from Antistasi's
+// own fn_initServer.sqf/fn_initClient.sqf), stock's own "Arsenal" addAction
+// call captures this addon's override as its snapshot automatically.
+GVAR(originalArsenalInit) = JN_fnc_arsenal_init;
+// Same reasoning, same reason overrides/fnc_arsenal_handleAction.sqf needs
+// it: CE's own driver-detected vehicle arsenal isn't in handleAction at all,
+// it's in the arsenalOpened dispatch the (now wrapped, still-running)
+// original init registers - deferring to this for that one case, rather
+// than vendoring CE's own driver-check/vehicleArsenal-skinning logic.
+GVAR(originalArsenalHandleAction) = JN_fnc_arsenal_handleAction;
+
 JN_fnc_arsenal_init = compileFinal preprocessFileLineNumbers QPATHTOF(overrides\fnc_arsenal_init.sqf);
 JN_fnc_arsenal_handleAction = compileFinal preprocessFileLineNumbers QPATHTOF(overrides\fnc_arsenal_handleAction.sqf);
 
