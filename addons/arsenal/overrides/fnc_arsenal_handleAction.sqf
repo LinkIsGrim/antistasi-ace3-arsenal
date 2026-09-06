@@ -33,7 +33,7 @@
 
 if (!(missionNamespace getVariable ["arsenalInit", false])) exitWith {};
 
-if ([] call FUNC(isCE) && {vehicle player != player} && {driver (vehicle player) == player}) exitWith {
+if ([] call FUNC(isCE) && {!isNull objectParent player} && {driver (vehicle player) == player}) exitWith {
     _this call GVAR(originalArsenalHandleAction);
 };
 
