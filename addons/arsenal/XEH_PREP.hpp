@@ -27,6 +27,7 @@ PREP(dataListResult);
 PREP(requestDataListSync);
 PREP(describeItem);
 PREP(decorate);
+PREP(installAceaxCompat);
 PREP(cleanName);
 PREP(sortStatementStock);
 PREP(sortStatementAlphabetical);

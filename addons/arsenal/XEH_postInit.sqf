@@ -83,6 +83,11 @@ if (!isNil "A3A_fnc_MagConvert_open") then {
     };
 };
 
+// ACEAX (ACE3 Arsenal Extended) compat - see fnc_installAceaxCompat.sqf's
+// header. isNil-guarded there too; only actually installs anything if
+// ACEAX's arsenal component is loaded.
+call FUNC(installAceaxCompat);
+
 // Server-authoritative accept/refuse for a client's proposed pool deltas -
 // see fnc_reconcile.sqf's header for why this can't be decided client-side.
 [QGVAR(reconcileRequest), {_this call FUNC(serverReconcile)}] call CBA_fnc_addEventHandler;
