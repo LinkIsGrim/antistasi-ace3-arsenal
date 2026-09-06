@@ -34,6 +34,55 @@ GVAR(originalArsenalHandleAction) = JN_fnc_arsenal_handleAction;
 JN_fnc_arsenal_init = compileFinal preprocessFileLineNumbers QPATHTOF(overrides\fnc_arsenal_init.sqf);
 JN_fnc_arsenal_handleAction = compileFinal preprocessFileLineNumbers QPATHTOF(overrides\fnc_arsenal_handleAction.sqf);
 
+// TEH-only: "Quick resupply"/"Equip last loadout"/"Mag Service" all read
+// jna_dataList directly (stock/ammo lookups) - TEH's own fn_arsenal_init.sqf
+// already adds all three as actions (called through to unmodified, above),
+// but jna_dataList itself is only ever populated by the vanilla BIS-skinned
+// arsenal display actually opening (fn_arsenal.sqf), which never happens
+// once ACE Arsenal replaces it - confirmed via source, jna_dataList would
+// otherwise sit at fn_arsenal_init.sqf's empty-array default forever.
+// An earlier version of this addon fixed that by adding its OWN second copy
+// of these three actions (wrapped in a sync-first call) in
+// overrides/fnc_arsenal_init.sqf - but now that this file calls through to
+// the real init instead of replacing it, that meant BOTH copies existed on
+// the object at once, showing every one of these three actions twice
+// (confirmed via a field report/RPT).
+//
+// Wrapping the three underlying globals instead, same capture-then-reassign
+// pattern as JN_fnc_arsenal_init/handleAction above, fixes the duplication
+// at the root: TEH's own action still gets added exactly once (by the real
+// init), but by the time it's clicked, each global already points at this
+// addon's sync-first wrapper - so there is nothing left to add or duplicate.
+// Every code block that calls one of these three inside TEH's stock
+// fn_arsenal_init.sqf does so via a late-bound global lookup by name at
+// click time (e.g. `[vehicle player] call JN_fnc_arsenal_quickReload;`), not
+// an eager capture the way the "Arsenal" action's own script argument is -
+// confirmed by reading that file - so reassigning the global here is enough,
+// with nothing upstream to keep in sync.
+if (!isNil "JN_fnc_arsenal_quickReload") then {
+    GVAR(originalArsenalQuickReload) = JN_fnc_arsenal_quickReload;
+    JN_fnc_arsenal_quickReload = {
+        private _args = _this;
+        [{_args call GVAR(originalArsenalQuickReload)}] call FUNC(requestDataListSync);
+    };
+};
+
+if (!isNil "JN_fnc_arsenal_loadInventory") then {
+    GVAR(originalArsenalLoadInventory) = JN_fnc_arsenal_loadInventory;
+    JN_fnc_arsenal_loadInventory = {
+        private _args = _this;
+        [{_args call GVAR(originalArsenalLoadInventory)}] call FUNC(requestDataListSync);
+    };
+};
+
+if (!isNil "A3A_fnc_MagConvert_open") then {
+    GVAR(originalMagConvertOpen) = A3A_fnc_MagConvert_open;
+    A3A_fnc_MagConvert_open = {
+        private _args = _this;
+        [{_args call GVAR(originalMagConvertOpen)}] call FUNC(requestDataListSync);
+    };
+};
+
 // Server-authoritative accept/refuse for a client's proposed pool deltas -
 // see fnc_reconcile.sqf's header for why this can't be decided client-side.
 [QGVAR(reconcileRequest), {_this call FUNC(serverReconcile)}] call CBA_fnc_addEventHandler;
