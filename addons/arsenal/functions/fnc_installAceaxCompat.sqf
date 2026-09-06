@@ -126,6 +126,17 @@ GVAR(aceaxSparseModelOptions) = {
     [["variant", "Variant", "", 0, _values, 0, true, [], false]]
 };
 
+// Temporary diagnostics (strip once the field report is understood) - two
+// rounds of blind ACEAX-side fixes have now both failed to fix the
+// field-reported duplicate row, and the second one's own premise (this
+// weapon's variant space is sparse) turned out to be wrong once the actual
+// loaded weapon pack's config was checked directly (lot_aaf_mk12.pbo
+// defines all 6 grip x camo combinations, no ace_arsenal_uniqueBase at
+// all - fully orthogonal, not sparse). Logging ground truth instead of
+// continuing to patch based on assumptions about ACEAX's own behavior.
+diag_log text format ["[skuaa3aa_arsenal][DIAG] ACEAX compat install: changeCurrentConfig present=%1 generateOptionsUI present=%2",
+    !isNil "aceax_arsenal_fnc_changeCurrentConfig", !isNil "aceax_arsenal_fnc_generateOptionsUI"];
+
 if (!isNil "aceax_arsenal_fnc_changeCurrentConfig") then {
     GVAR(originalAceaxChangeCurrentConfig) = aceax_arsenal_fnc_changeCurrentConfig;
     aceax_arsenal_fnc_changeCurrentConfig = {
@@ -137,6 +148,10 @@ if (!isNil "aceax_arsenal_fnc_changeCurrentConfig") then {
             _options set [_optionIndex, _valueName];
 
             private _exactMatch = [aceax_arsenal_currentConfig, aceax_arsenal_currentModel, _options] call aceax_gearinfo_fnc_findConfig;
+
+            diag_log text format ["[skuaa3aa_arsenal][DIAG] changeCurrentConfig: config=%1 model=%2 optionIndex=%3 valueName=%4 attemptedOptions=%5 exactMatchFound=%6",
+                aceax_arsenal_currentConfig, aceax_arsenal_currentModel, _optionIndex, _valueName, _options, !isNull _exactMatch];
+
             if (isNull _exactMatch) exitWith {
                 ["That combination isn't a valid variant on its own - some options can't be mixed."] call BIS_fnc_error;
             };
@@ -152,6 +167,9 @@ if (!isNil "aceax_arsenal_fnc_generateOptionsUI") then {
         params ["_display", ["_classRoot", ""], ["_selectedModel", ""]];
 
         private _sparse = _selectedModel != "" && {[_classRoot, _selectedModel] call GVAR(aceaxIsSparseModel)};
+
+        diag_log text format ["[skuaa3aa_arsenal][DIAG] generateOptionsUI: classRoot=%1 selectedModel=%2 sparse=%3",
+            _classRoot, _selectedModel, _sparse];
 
         if (_sparse) then {
             private _realGetModelOptions = aceax_gearinfo_fnc_getModelOptions;
