@@ -72,7 +72,7 @@ switch (_mode) do {
         [_arg] call BIS_fnc_error;
         [true, false] call ace_arsenal_fnc_refresh;
 
-        GVAR(snapPool) = [_unit, true] call jn_fnc_arsenal_cargoToArray;
+        GVAR(snapPool) = [_unit] call FUNC(playerCargoToArray);
         GVAR(snapLoadout) = _unit call CBA_fnc_getLoadout;
         GVAR(stripDepth) = 0;
         GVAR(busy) = false;

@@ -1,4 +1,8 @@
 PREP(isTEH);
+PREP(isCE);
+PREP(playerCargoToArray);
+PREP(playerCargoToArrayCE);
+PREP(fixBinocularDoubleCount);
 PREP(poolFlat);
 PREP(syncPool);
 PREP(openPlayer);

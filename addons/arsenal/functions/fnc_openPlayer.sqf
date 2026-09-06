@@ -28,7 +28,7 @@ if (!alive player) exitWith {};
 ["SaveTFAR"] call jn_fnc_arsenal;
 
 GVAR(snapUnit) = player;
-GVAR(snapPool) = [player, true] call jn_fnc_arsenal_cargoToArray;
+GVAR(snapPool) = [player] call FUNC(playerCargoToArray);
 GVAR(snapLoadout) = player call CBA_fnc_getLoadout;
 
 // Fresh per session - fnc_reconcile.sqf populates these from its snapshot diff

@@ -45,7 +45,7 @@ if (missionNamespace getVariable [QGVAR(busy), false]) exitWith {};
 private _unit = missionNamespace getVariable [QGVAR(snapUnit), objNull];
 if (isNull _unit) exitWith {};
 
-private _new = [_unit, true] call jn_fnc_arsenal_cargoToArray;
+private _new = [_unit] call FUNC(playerCargoToArray);
 private _old = missionNamespace getVariable [QGVAR(snapPool), []];
 
 if (_old isEqualTo []) exitWith {
