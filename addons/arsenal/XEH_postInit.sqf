@@ -66,6 +66,19 @@ if (hasInterface) then {
         [{call FUNC(reconcile)}, []] call CBA_fnc_execNextFrame;
     }] call CBA_fnc_addEventHandler;
 
+    // Headgear/goggles/NVG/map/compass/watch/radio/GPS - none of these trigger
+    // a right-panel refill (no attachments to show), so none of them reach
+    // reconcile via any of the hooks above; confirmed via fnc_onSelChangedLeft.sqf,
+    // every one of those cases (add AND remove) unconditionally runs the
+    // TOGGLE_RIGHT_PANEL_HIDE macro, which is the one thing they all have in
+    // common - and that macro itself fires this event (defines.hpp). Without
+    // it, taking/returning any of these slots' items only actually reconciles
+    // once something else happens to trigger it later (a tab switch, closing
+    // the arsenal) - looks like nothing happened until then, not a display lag.
+    ["ace_arsenal_rightPanelHide", {
+        [{call FUNC(reconcile)}, []] call CBA_fnc_execNextFrame;
+    }] call CBA_fnc_addEventHandler;
+
     // Sort by pool stock rather than anything ACE natively tracks - applies
     // to every left/right tab per the framework doc's stat/sort tab numbering
     // (face/voice/insignia excluded, tabs 15-17 left - not pool-tracked items).
