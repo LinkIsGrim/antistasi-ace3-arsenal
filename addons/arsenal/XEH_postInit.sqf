@@ -79,6 +79,23 @@ if (hasInterface) then {
         [{call FUNC(reconcile)}, []] call CBA_fnc_execNextFrame;
     }] call CBA_fnc_addEventHandler;
 
+    // ACE Arsenal Extended's weapon variant (grip/camo/etc) picker
+    // (fnc_generateOptionsUI.sqf/fnc_onValueButton.sqf/fnc_changeGear.sqf) sets
+    // the new loadout directly via a raw setUnitLoadout, entirely bypassing
+    // ace_arsenal_fnc_onSelChangedLeft/Right - none of the hooks above ever
+    // see it, since none of them are things this specific action does. This
+    // isn't ACE's own event; it's ACEAX's aceax_ingame_optionChanged, fired
+    // once fnc_changeGear.sqf's callback actually finishes applying the swap
+    // (after its own delay/progress bar, not mid-flight) - reacting to it
+    // here instead of missing the change entirely (which read on the ACE
+    // side as an immediate revert with a leftover phantom row, since the
+    // panel never got the chance to refill against the item that's actually
+    // equipped now). No-ops harmlessly if ACEAX isn't installed - CBA event
+    // handlers for an event that never fires are inert, not an error.
+    ["aceax_ingame_optionChanged", {
+        [{call FUNC(reconcile)}, []] call CBA_fnc_execNextFrame;
+    }] call CBA_fnc_addEventHandler;
+
     // Sort by pool stock rather than anything ACE natively tracks - applies
     // to every left/right tab per the framework doc's stat/sort tab numbering
     // (face/voice/insignia excluded, tabs 15-17 left - not pool-tracked items).
