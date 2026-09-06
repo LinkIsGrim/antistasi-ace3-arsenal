@@ -58,7 +58,7 @@ switch (_mode) do {
         // Separate request, not piggybacked on this reply - see
         // fnc_serverReconcile.sqf's header for why. fnc_dataListResult.sqf
         // redecorates unconditionally once the fresh jna_dataList lands.
-        call FUNC(requestDataListSync);
+        [] call FUNC(requestDataListSync);
 
         // Always re-diff against the baseline just set, not just when a call
         // was known to be dropped - catches anything that happened during

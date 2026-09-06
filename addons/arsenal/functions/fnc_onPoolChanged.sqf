@@ -25,4 +25,4 @@
 
 if (missionNamespace getVariable [QGVAR(snapUnit), objNull] isEqualTo objNull) exitWith {};
 
-call FUNC(requestDataListSync);
+[] call FUNC(requestDataListSync);

@@ -11,12 +11,15 @@
  * these are short, user-initiated one-off actions, not a hot path - not
  * worth a request queue for that likelihood.
  *
- * Temporary: logs _this/typeName _this before params runs - a field report
- * hit "Error Params: Type String, expected code" on the params line below,
- * with no fuller callstack in the RPT to identify the caller. Every actual
- * call site in this addon passes either nothing or [{code}], neither of
- * which should produce this - logging the raw value here to catch it
- * concretely next time instead of guessing further. Strip once resolved.
+ * Every call site MUST pass an explicit argument array, never a bare
+ * `call FUNC(requestDataListSync)` - unary call does not reset _this to [],
+ * it inherits whatever _this was already live in the calling scope. Two call
+ * sites (fnc_reconcileResult.sqf's "ok" case, fnc_onPoolChanged.sqf) used to
+ * do this and, depending on the caller's own _this at that point, could pass
+ * through a stray STRING (e.g. "ok" from the reconcile promise's own _this),
+ * failing the params type check below with "Error Params: Type String,
+ * expected code" - confirmed via a field RPT and fixed at both call sites
+ * (now `[] call FUNC(requestDataListSync)`).
  *
  * Arguments:
  * 0: Callback to run once jna_dataList is fresh <CODE> (default: {})
@@ -27,8 +30,6 @@
  * Example:
  * [{hint "synced"}] call FUNC(requestDataListSync)
  */
-
-diag_log text format ["[skuaa3aa_arsenal][DIAG] requestDataListSync: _this=%1 typeName=%2", _this, typeName _this];
 
 params [["_callback", {}, [{}]]];
 
