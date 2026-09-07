@@ -6,10 +6,18 @@
  * needs a current jna_dataList client-side goes through this rather than
  * assuming it's already populated.
  *
- * Known gap: a second call before the first's reply arrives overwrites the
- * pending callback, silently dropping the first. Acceptable for now since
- * these are short, user-initiated one-off actions, not a hot path - not
- * worth a request queue for that likelihood.
+ * Queues rather than overwrites - GVAR(pendingSyncCallbacks) is an array,
+ * not a single slot. A previous version used one overwritable variable and
+ * documented the resulting drop as an acceptable gap ("these are short,
+ * user-initiated one-off actions, not a hot path"); a field report proved
+ * that wrong - TEH's "Equip last loadout" action (this same function, via
+ * the JN_fnc_arsenal_loadInventory wrap in XEH_postInit.sqf) silently did
+ * nothing at all, no error and no missing-items report either, meaning its
+ * callback never ran - clobbered by some other concurrent sync request
+ * before the reply landed. Every reply refreshes the same real jna_dataList
+ * regardless of which request it's "for", so it's always correct to drain
+ * and run every queued callback on whichever reply arrives first - no need
+ * to match a callback to its own specific request.
  *
  * Every call site MUST pass an explicit argument array, never a bare
  * `call FUNC(requestDataListSync)` - unary call does not reset _this to [],
@@ -33,5 +41,8 @@
 
 params [["_callback", {}, [{}]]];
 
-GVAR(pendingSyncCallback) = _callback;
+private _pending = missionNamespace getVariable [QGVAR(pendingSyncCallbacks), []];
+_pending pushBack _callback;
+GVAR(pendingSyncCallbacks) = _pending;
+
 [QGVAR(dataListRequest), [player]] call CBA_fnc_serverEvent;
