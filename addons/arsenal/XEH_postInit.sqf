@@ -218,6 +218,17 @@ if (hasInterface) then {
     ["ace_arsenal_displayOpened", {
         params ["_display"];
 
+        // Antistasi's own Tab/Y menu keybinds (core/keybinds/fn_keyActions.sqf)
+        // already refuse to fire while the player is in the arsenal - but that
+        // guard checks jna_playersInArsenal, a server list only vanilla JNA's own
+        // open/close flow (fn_arsenal_requestOpen.sqf/fn_arsenal_requestClose.sqf)
+        // maintains. This addon opens ACE Arsenal directly and never goes through
+        // that flow, so a player using this bridge was never actually on that
+        // list - Antistasi's own existing protection silently didn't apply here.
+        // Piggybacking on the same list/mechanism (same remoteExecCall shape
+        // vanilla itself uses) rather than inventing a separate guard.
+        [clientOwner] remoteExecCall ["jn_fnc_arsenal_requestOpen", 2];
+
         {
             private _ctrl = _display displayCtrl _x;
             if (!isNull _ctrl) then {
@@ -229,6 +240,12 @@ if (hasInterface) then {
     }] call CBA_fnc_addEventHandler;
 
     ["ace_arsenal_displayClosed", {
+        // Matches the requestOpen call in the displayOpened handler above -
+        // removes this player from jna_playersInArsenal again so Antistasi's own
+        // Tab/Y keybind guard (core/keybinds/fn_keyActions.sqf) stops refusing
+        // them once the arsenal is actually closed.
+        [clientOwner] remoteExecCall ["jn_fnc_arsenal_requestClose", 2];
+
         // Catches anything a debounced cargoChanged reconcile hasn't settled yet
         // (e.g. a change right before close) before the snapshot state is torn down.
         call FUNC(reconcile);
@@ -271,6 +288,32 @@ if (hasInterface) then {
                 } else {
                     diag_log text format ["[skuaa3aa_arsenal] rebelLoadouts was %1, not a HashMap - not saving rebel loadout edit for %2.", typeName _rebelLoadouts, _roleToSave];
                 };
+            };
+        } else {
+            // TEH's "Equip last loadout" action (fn_arsenal_init.sqf, called
+            // through unmodified - this addon only wraps the underlying
+            // JN_fnc_arsenal_loadInventory global, not the action itself)
+            // reads player getVariable ["lastArsenalLoadout", ""] and looks
+            // that name up via BIS_fnc_saveInventory's own profileNamespace
+            // storage - both are normally only ever populated by JNA's own
+            // vanilla "Save Template" button inside its BIS-skinned arsenal
+            // display, which this addon's players never see, so the action
+            // always fell through to its own "no saved loadout" message.
+            // Replicating that exact save (same command, same storage)
+            // automatically here - under a fixed internal template name, not
+            // exposed to the player - keeps the action working exactly as
+            // before, with no change needed to TEH's own action code.
+            if (!isNil "JN_fnc_arsenal_loadInventory") then {
+                [
+                    player,
+                    [profileNamespace, QGVAR(lastArsenalTemplate)],
+                    [
+                        player getVariable ["BIS_fnc_arsenal_face", face player],
+                        speaker player,
+                        player call BIS_fnc_getUnitInsignia
+                    ]
+                ] call BIS_fnc_saveInventory;
+                player setVariable ["lastArsenalLoadout", QGVAR(lastArsenalTemplate)];
             };
         };
 
