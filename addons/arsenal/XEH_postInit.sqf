@@ -102,6 +102,10 @@ call FUNC(installAceaxCompat);
 // part - see fnc_serverSyncDataList.sqf's header.
 [QGVAR(dataListRequest), {_this call FUNC(serverSyncDataList)}] call CBA_fnc_addEventHandler;
 
+// Same reasoning - see fnc_markPlayerInArsenal.sqf's header for why this
+// can't just call jn_fnc_arsenal_requestOpen directly either.
+[QGVAR(markInArsenal), {_this call FUNC(markPlayerInArsenal)}] call CBA_fnc_addEventHandler;
+
 if (hasInterface) then {
     [QGVAR(reconcileResult), {_this call FUNC(resolveReconcilePromise)}] call CBA_fnc_addEventHandler;
     [QGVAR(dataListResult), {_this call FUNC(dataListResult)}] call CBA_fnc_addEventHandler;
@@ -221,13 +225,17 @@ if (hasInterface) then {
         // Antistasi's own Tab/Y menu keybinds (core/keybinds/fn_keyActions.sqf)
         // already refuse to fire while the player is in the arsenal - but that
         // guard checks jna_playersInArsenal, a server list only vanilla JNA's own
-        // open/close flow (fn_arsenal_requestOpen.sqf/fn_arsenal_requestClose.sqf)
-        // maintains. This addon opens ACE Arsenal directly and never goes through
-        // that flow, so a player using this bridge was never actually on that
-        // list - Antistasi's own existing protection silently didn't apply here.
-        // Piggybacking on the same list/mechanism (same remoteExecCall shape
-        // vanilla itself uses) rather than inventing a separate guard.
-        [clientOwner] remoteExecCall ["jn_fnc_arsenal_requestOpen", 2];
+        // open flow (fn_arsenal_requestOpen.sqf) maintains. This addon opens ACE
+        // Arsenal directly and never goes through that flow, so a player using
+        // this bridge was never actually on that list - Antistasi's own existing
+        // protection silently didn't apply here. Piggybacking on the same
+        // list/mechanism rather than inventing a separate guard - but NOT by
+        // calling jn_fnc_arsenal_requestOpen directly, since that function also
+        // remoteExecCalls "Open" on jn_fnc_arsenal to the client, opening the
+        // real BIS-skinned arsenal display alongside ACE Arsenal (caught before
+        // release - see fnc_markPlayerInArsenal.sqf's header). This event
+        // replicates only the safe half of what that function does.
+        [QGVAR(markInArsenal), [clientOwner]] call CBA_fnc_serverEvent;
 
         {
             private _ctrl = _display displayCtrl _x;

@@ -28,6 +28,7 @@ PREP(requestDataListSync);
 PREP(describeItem);
 PREP(decorate);
 PREP(installAceaxCompat);
+PREP(markPlayerInArsenal);
 PREP(cleanName);
 PREP(sortStatementStock);
 PREP(sortStatementAlphabetical);
