@@ -45,4 +45,6 @@ private _pending = missionNamespace getVariable [QGVAR(pendingSyncCallbacks), []
 _pending pushBack _callback;
 GVAR(pendingSyncCallbacks) = _pending;
 
+diag_log text format ["[skuaa3aa_arsenal][DIAG] requestDataListSync: queued, pending count=%1, sending dataListRequest", count _pending];
+
 [QGVAR(dataListRequest), [player]] call CBA_fnc_serverEvent;

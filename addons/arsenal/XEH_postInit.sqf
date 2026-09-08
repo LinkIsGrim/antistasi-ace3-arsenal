@@ -59,11 +59,21 @@ JN_fnc_arsenal_handleAction = compileFinal preprocessFileLineNumbers QPATHTOF(ov
 // an eager capture the way the "Arsenal" action's own script argument is -
 // confirmed by reading that file - so reassigning the global here is enough,
 // with nothing upstream to keep in sync.
+// Temporary diagnostics (strip once understood) - queuing
+// fnc_requestDataListSync.sqf's pending callbacks (a77bd51) didn't fix
+// Quick resupply/Equip last loadout/Mag Service per a field report on that
+// exact build - logging every link in the chain (wrapper invoked -> sync
+// requested -> original function actually called) instead of guessing a
+// third time.
 if (!isNil "JN_fnc_arsenal_quickReload") then {
     GVAR(originalArsenalQuickReload) = JN_fnc_arsenal_quickReload;
     JN_fnc_arsenal_quickReload = {
         private _args = _this;
-        [{_args call GVAR(originalArsenalQuickReload)}] call FUNC(requestDataListSync);
+        diag_log text format ["[skuaa3aa_arsenal][DIAG] quickReload wrapper invoked, args=%1", _args];
+        [{
+            diag_log text "[skuaa3aa_arsenal][DIAG] quickReload sync callback firing, calling original";
+            _args call GVAR(originalArsenalQuickReload);
+        }] call FUNC(requestDataListSync);
     };
 };
 
@@ -71,7 +81,11 @@ if (!isNil "JN_fnc_arsenal_loadInventory") then {
     GVAR(originalArsenalLoadInventory) = JN_fnc_arsenal_loadInventory;
     JN_fnc_arsenal_loadInventory = {
         private _args = _this;
-        [{_args call GVAR(originalArsenalLoadInventory)}] call FUNC(requestDataListSync);
+        diag_log text format ["[skuaa3aa_arsenal][DIAG] loadInventory wrapper invoked, args=%1", _args];
+        [{
+            diag_log text "[skuaa3aa_arsenal][DIAG] loadInventory sync callback firing, calling original";
+            _args call GVAR(originalArsenalLoadInventory);
+        }] call FUNC(requestDataListSync);
     };
 };
 
@@ -79,7 +93,11 @@ if (!isNil "A3A_fnc_MagConvert_open") then {
     GVAR(originalMagConvertOpen) = A3A_fnc_MagConvert_open;
     A3A_fnc_MagConvert_open = {
         private _args = _this;
-        [{_args call GVAR(originalMagConvertOpen)}] call FUNC(requestDataListSync);
+        diag_log text format ["[skuaa3aa_arsenal][DIAG] MagConvert_open wrapper invoked, args=%1", _args];
+        [{
+            diag_log text "[skuaa3aa_arsenal][DIAG] MagConvert_open sync callback firing, calling original";
+            _args call GVAR(originalMagConvertOpen);
+        }] call FUNC(requestDataListSync);
     };
 };
 

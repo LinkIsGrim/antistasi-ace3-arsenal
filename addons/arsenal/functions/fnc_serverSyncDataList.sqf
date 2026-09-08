@@ -22,6 +22,9 @@
 if (!isServer) exitWith {};
 
 params [["_unit", objNull, [objNull]]];
+
+diag_log text format ["[skuaa3aa_arsenal][DIAG] serverSyncDataList: request received, unit=%1 isNull=%2 jna_dataList isNil=%3", _unit, isNull _unit, isNil "jna_dataList"];
+
 if (isNull _unit) exitWith {};
 
 private _snapshot = if (isNil "jna_dataList") then {[]} else {+jna_dataList};
