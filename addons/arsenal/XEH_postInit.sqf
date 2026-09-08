@@ -36,68 +36,55 @@ JN_fnc_arsenal_handleAction = compileFinal preprocessFileLineNumbers QPATHTOF(ov
 
 // TEH-only: "Quick resupply"/"Equip last loadout"/"Mag Service" all read
 // jna_dataList directly (stock/ammo lookups) - TEH's own fn_arsenal_init.sqf
-// already adds all three as actions (called through to unmodified, above),
-// but jna_dataList itself is only ever populated by the vanilla BIS-skinned
-// arsenal display actually opening (fn_arsenal.sqf), which never happens
-// once ACE Arsenal replaces it - confirmed via source, jna_dataList would
-// otherwise sit at fn_arsenal_init.sqf's empty-array default forever.
-// An earlier version of this addon fixed that by adding its OWN second copy
-// of these three actions (wrapped in a sync-first call) in
-// overrides/fnc_arsenal_init.sqf - but now that this file calls through to
-// the real init instead of replacing it, that meant BOTH copies existed on
-// the object at once, showing every one of these three actions twice
-// (confirmed via a field report/RPT).
+// already adds all three as actions (called through to unmodified, above).
+// An earlier version of this addon fixed the duplicate-action bug by
+// wrapping these three globals (same capture-then-reassign pattern as
+// JN_fnc_arsenal_init/handleAction above) instead of adding its own second
+// copy of the actions - that part stands. What the wrap DID with that hook
+// point kept changing and kept breaking (three rounds of field reports:
+// stray _this leaking through a bare call, a single-slot pending-callback
+// getting clobbered by a concurrent sync, then still broken after that fix
+// too) - all because it tried to force jna_dataList fresh for the ACTING
+// player before calling through, via an async server round trip these
+// simple one-off field actions had no business waiting on.
 //
-// Wrapping the three underlying globals instead, same capture-then-reassign
-// pattern as JN_fnc_arsenal_init/handleAction above, fixes the duplication
-// at the root: TEH's own action still gets added exactly once (by the real
-// init), but by the time it's clicked, each global already points at this
-// addon's sync-first wrapper - so there is nothing left to add or duplicate.
-// Every code block that calls one of these three inside TEH's stock
-// fn_arsenal_init.sqf does so via a late-bound global lookup by name at
-// click time (e.g. `[vehicle player] call JN_fnc_arsenal_quickReload;`), not
-// an eager capture the way the "Arsenal" action's own script argument is -
-// confirmed by reading that file - so reassigning the global here is enough,
-// with nothing upstream to keep in sync.
-// Temporary diagnostics (strip once understood) - queuing
-// fnc_requestDataListSync.sqf's pending callbacks (a77bd51) didn't fix
-// Quick resupply/Equip last loadout/Mag Service per a field report on that
-// exact build - logging every link in the chain (wrapper invoked -> sync
-// requested -> original function actually called) instead of guessing a
-// third time.
+// Simplified: call straight through, no pre-sync at all - matches genuine
+// vanilla behavior (JNA itself never guaranteed jna_dataList was fresh
+// before these fired either, only that SOME arsenal interaction had
+// happened recently) rather than trying to engineer something stronger and
+// repeatedly getting the engineering wrong. The one real gap versus a
+// literal do-nothing wrap: these three mutate the shared pool via
+// jn_fnc_arsenal_addItem/removeItem, which only notify jna_dataList itself
+// (vanilla's own client-local mechanism) - anyone else with THIS addon's
+// ACE Arsenal open right now has no idea it happened until something else
+// happens to trigger a resync. Fixed with a fire-and-forget notify after
+// the call - reuses the existing QGVAR(poolChanged) broadcast
+// (fnc_onPoolChanged.sqf) other pool-mutating paths already use, just
+// triggered from a new source. No callback, no waiting, nothing to clobber.
 if (!isNil "JN_fnc_arsenal_quickReload") then {
     GVAR(originalArsenalQuickReload) = JN_fnc_arsenal_quickReload;
     JN_fnc_arsenal_quickReload = {
-        private _args = _this;
-        diag_log text format ["[skuaa3aa_arsenal][DIAG] quickReload wrapper invoked, args=%1", _args];
-        [{
-            diag_log text "[skuaa3aa_arsenal][DIAG] quickReload sync callback firing, calling original";
-            _args call GVAR(originalArsenalQuickReload);
-        }] call FUNC(requestDataListSync);
+        private _result = _this call GVAR(originalArsenalQuickReload);
+        [QGVAR(poolChangedFromField)] call CBA_fnc_serverEvent;
+        _result
     };
 };
 
 if (!isNil "JN_fnc_arsenal_loadInventory") then {
     GVAR(originalArsenalLoadInventory) = JN_fnc_arsenal_loadInventory;
     JN_fnc_arsenal_loadInventory = {
-        private _args = _this;
-        diag_log text format ["[skuaa3aa_arsenal][DIAG] loadInventory wrapper invoked, args=%1", _args];
-        [{
-            diag_log text "[skuaa3aa_arsenal][DIAG] loadInventory sync callback firing, calling original";
-            _args call GVAR(originalArsenalLoadInventory);
-        }] call FUNC(requestDataListSync);
+        private _result = _this call GVAR(originalArsenalLoadInventory);
+        [QGVAR(poolChangedFromField)] call CBA_fnc_serverEvent;
+        _result
     };
 };
 
 if (!isNil "A3A_fnc_MagConvert_open") then {
     GVAR(originalMagConvertOpen) = A3A_fnc_MagConvert_open;
     A3A_fnc_MagConvert_open = {
-        private _args = _this;
-        diag_log text format ["[skuaa3aa_arsenal][DIAG] MagConvert_open wrapper invoked, args=%1", _args];
-        [{
-            diag_log text "[skuaa3aa_arsenal][DIAG] MagConvert_open sync callback firing, calling original";
-            _args call GVAR(originalMagConvertOpen);
-        }] call FUNC(requestDataListSync);
+        private _result = _this call GVAR(originalMagConvertOpen);
+        [QGVAR(poolChangedFromField)] call CBA_fnc_serverEvent;
+        _result
     };
 };
 
@@ -119,6 +106,13 @@ call FUNC(installAceaxCompat);
 // the real BIS arsenal). This is that side effect without the BIS-arsenal
 // part - see fnc_serverSyncDataList.sqf's header.
 [QGVAR(dataListRequest), {_this call FUNC(serverSyncDataList)}] call CBA_fnc_addEventHandler;
+
+// Fire-and-forget: TEH's Quick resupply/Equip last loadout/Mag Service
+// mutate the pool via jn_fnc_arsenal_addItem/removeItem directly, outside
+// this addon's own reconcile path entirely - see the wrap above for why.
+// This is the only thing they still need from this addon: tell everyone
+// else with an ACE Arsenal open that the pool changed too.
+[QGVAR(poolChangedFromField), {[QGVAR(poolChanged), []] call CBA_fnc_globalEvent}] call CBA_fnc_addEventHandler;
 
 // Same reasoning - see fnc_markPlayerInArsenal.sqf's header for why this
 // can't just call jn_fnc_arsenal_requestOpen directly either.

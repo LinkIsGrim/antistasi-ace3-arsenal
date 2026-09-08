@@ -39,8 +39,6 @@ if (!isNull _display) then {_display call FUNC(decorate)};
 private _pending = missionNamespace getVariable [QGVAR(pendingSyncCallbacks), []];
 GVAR(pendingSyncCallbacks) = [];
 
-diag_log text format ["[skuaa3aa_arsenal][DIAG] dataListResult: reply received, draining %1 pending callback(s)", count _pending];
-
 {[] call _x} forEach _pending;
 
 if (!isNull (findDisplay IDD_TRANSFER)) then {
